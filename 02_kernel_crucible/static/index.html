@@ -1,253 +1,288 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kernel Crucible • Autonomous Silicon Evolution</title>
+    <title>Kernel Crucible • shadcn/ui</title>
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <!-- ReactBits Canvas Particles Background -->
-    <canvas id="particles-canvas" class="particles-bg"></canvas>
-    <div class="grid-overlay"></div>
-
+    <!-- Top Navigation Header -->
     <header class="app-header">
         <div class="brand">
-            <div class="brand-logo">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+            <div class="brand-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
             </div>
             <div>
-                <h1 class="brand-title">Kernel Crucible <span class="badge-reactbits">React Bits UI</span></h1>
-                <p class="brand-subtitle">Autonomous Silicon Evolution on NVIDIA RTX 2050 Ampere</p>
+                <h1 class="brand-title">Kernel Crucible <span class="badge badge-secondary">shadcn/ui</span></h1>
+                <p class="brand-subtitle">Autonomous Bare-Metal GPU Kernel Crucible on RTX 2050 Ampere</p>
             </div>
         </div>
 
         <div class="hardware-telemetry">
-            <div class="badge-item">
-                <span class="label">HARDWARE</span>
-                <span class="val cyan">RTX 2050 (16 SMs)</span>
+            <div class="badge badge-outline">
+                <span style="color: hsl(var(--muted-foreground));">GPU:</span>&nbsp;RTX 2050 Mobile (16 SMs)
             </div>
-            <div class="badge-item">
-                <span class="label">P-STATE</span>
-                <span class="val green" id="pstate-val">P0 (Locked)</span>
+            <div class="badge badge-success" id="pstate-badge">
+                <span>P-State:</span>&nbsp;<strong id="pstate-val">P0 (Locked)</strong>
             </div>
-            <div class="badge-item">
-                <span class="label">SM CLOCK</span>
-                <span class="val gold" id="clock-val">1,747 MHz</span>
+            <div class="badge badge-warning">
+                <span>Clock:</span>&nbsp;<strong id="clock-val">1,747 MHz</strong>
             </div>
-            <div class="badge-item">
-                <span class="label">TEMP / POWER</span>
-                <span class="val" id="temp-power-val">54°C | 6.8W</span>
+            <div class="badge badge-outline">
+                <span id="temp-power-val">54°C | 6.8W</span>
             </div>
-            <div class="badge-item">
-                <span class="label">UNSLOTH RUNTIME</span>
-                <span class="val purple" id="unsloth-header-badge">Online (Port 8888)</span>
-            </div>
-            <div class="badge-item" style="border-color: rgba(0, 240, 255, 0.3);">
-                <span class="label">MICRO-INTERACTIONS</span>
-                <span class="val cyan">✨ ReactBits.dev</span>
+            <div class="badge badge-purple" id="unsloth-header-badge">
+                Unsloth Online (Port 8888)
             </div>
         </div>
     </header>
 
     <main class="arena-layout">
-        <!-- TOP CONTROL BAR -->
-        <section class="control-panel glass-card spotlight-card">
-            <div class="panel-left">
-                <button class="btn btn-primary" id="btn-step">⚔️ RUN ARENA MATCH</button>
-                <button class="btn btn-grpo" id="btn-grpo">🧬 RLVR / GRPO BATTLE (G=4)</button>
-                <button class="btn btn-secondary" id="btn-auto">🧬 AUTO-RLVR TOURNAMENT (G=4)</button>
-                <div class="workload-picker">
-                    <span class="picker-label">ARENA SCENARIO:</span>
-                    <select id="workload-select" class="picker-select">
-                        <option value="split_kv_d64">⚡ LLM Decoding (N=1024, D=64)</option>
-                        <option value="prefill_long_n8k">🚀 Long Prefill (N=8192, D=64)</option>
-                        <option value="vision_head_d256">👁️ Vision High-Dim (N=1024, D=256)</option>
-                        <option value="numerical_stress">💥 Numerical Stress ([-500, +500])</option>
+        <!-- Top Controls & Telemetry Stats Card -->
+        <section class="card control-bar">
+            <div class="controls-left">
+                <button class="btn btn-primary" id="btn-step">Run Step</button>
+                <button class="btn btn-grpo" id="btn-grpo">RLVR / GRPO Cohort (G=4)</button>
+                <button class="btn btn-secondary" id="btn-auto">Auto-Tournament (G=4)</button>
+                
+                <div class="select-wrapper">
+                    <select id="workload-select" class="select">
+                        <option value="split_kv_d64">LLM Decoding (N=1024, D=64)</option>
+                        <option value="prefill_long_n8k">Long Prefill (N=8192, D=64)</option>
+                        <option value="vision_head_d256">Vision High-Dim (N=1024, D=256)</option>
+                        <option value="numerical_stress">Numerical Stress ([-500, +500])</option>
                     </select>
                 </div>
-                <div class="auto-indicator" id="auto-indicator">
-                    <span class="pulse-dot"></span> <span id="auto-status-text">MANUAL MODE</span>
+
+                <div class="badge badge-outline" id="auto-indicator">
+                    <span id="auto-status-text">Manual Mode</span>
                 </div>
             </div>
-            <div class="panel-stats">
-                <div class="stat-box">
-                    <span class="stat-title">TOURNAMENT ROUND</span>
-                    <span class="stat-num cyan" id="stat-round">0</span>
+
+            <div class="controls-stats">
+                <div class="stat-item">
+                    <span class="stat-label">Round</span>
+                    <span class="stat-value" id="stat-round">0</span>
                 </div>
-                <div class="stat-box">
-                    <span class="stat-title">MUTANT GENERATION</span>
-                    <span class="stat-num purple" id="stat-gen">0</span>
+                <div class="stat-item">
+                    <span class="stat-label">Generation</span>
+                    <span class="stat-value" id="stat-gen">0</span>
                 </div>
-                <div class="stat-box">
-                    <span class="stat-title">HARDWARE BASELINE</span>
-                    <span class="stat-num red" id="stat-baseline">-- µs</span>
+                <div class="stat-item">
+                    <span class="stat-label">Baseline</span>
+                    <span class="stat-value" id="stat-baseline" style="color: var(--rose-500);">-- µs</span>
                 </div>
             </div>
         </section>
 
-        <!-- UNSLOTH DROP-IN MONKEY PATCH BANNER -->
-        <section class="unsloth-panel glass-card spotlight-card">
-            <div class="unsloth-info">
-                <div class="unsloth-title-row">
-                    <span class="unsloth-logo">🦥</span>
-                    <div>
-                        <h3 class="unsloth-heading">UNSLOTH & PYTORCH DROP-IN MONKEY PATCH</h3>
-                        <p class="unsloth-subheading">Seamlessly routes all attention & softmax layers to our silicon-evolved bare-metal CUDA kernel.</p>
+        <!-- Unsloth Drop-in Runtime & Post-Training Banner -->
+        <section class="card unsloth-card">
+            <div class="card-content" style="padding: 1.25rem 1.5rem;">
+                <div class="unsloth-content">
+                    <div class="unsloth-meta">
+                        <div class="unsloth-title">
+                            <span>🦥</span>
+                            <span>Unsloth & PyTorch Drop-In Monkey Patch</span>
+                        </div>
+                        <p class="unsloth-desc">Directs PyTorch attention and softmax layers to our silicon-evolved bare-metal CUDA kernel.</p>
+                        <div class="unsloth-badges">
+                            <span class="badge badge-secondary" id="unsloth-status-tag">Status: Native PyTorch</span>
+                            <span class="badge badge-purple" id="unsloth-speedup-tag">Speedup: +0.0%</span>
+                            <span class="badge badge-warning" id="saturation-tag">Window: 0/50 | 8.8x Goal</span>
+                        </div>
+                    </div>
+                    <div class="unsloth-actions">
+                        <button class="btn btn-unsloth" id="btn-unsloth-toggle">Inject into Unsloth & PyTorch</button>
+                        <button class="btn btn-secondary" id="btn-post-train">Distill Silicon Gold</button>
                     </div>
                 </div>
-                <div class="unsloth-status-tags">
-                    <span class="status-tag" id="unsloth-status-tag">STATUS: NATIVE PYTORCH</span>
-                    <span class="status-tag speedup-tag" id="unsloth-speedup-tag">SPEEDUP: +0.0%</span>
-                    <span class="status-tag" id="saturation-tag" style="border-color: #ffd700; color: #ffd700;">PLATEAU: 0/25</span>
-                </div>
-            </div>
-            <div class="unsloth-actions">
-                <button class="btn btn-unsloth" id="btn-unsloth-toggle">🦥 INJECT INTO UNSLOTH & PYTORCH</button>
-                <button class="btn btn-unsloth" id="btn-post-train" style="border-color: #ffd700; color: #ffd700;">🎓 DISTILL SILICON GOLD</button>
             </div>
         </section>
 
-        <!-- CENTER RING: CHAMPION VS CHALLENGER -->
+        <!-- Main Coliseum Arena: Champion vs Challenger -->
         <section class="coliseum-ring">
-            <!-- REIGNING CHAMPION CARD (With ReactBits Laser Border & Spotlight) -->
-            <div class="combatant-card champion-card glass-card spotlight-card laser-border">
-                <div class="card-crown">👑 REIGNING CHAMPION</div>
-                <h2 class="combatant-name gold" id="champ-name">SplitKV-Base-Champion</h2>
-                <div class="combatant-meta">
-                    <span>Author: <strong id="champ-author">Architect</strong></span>
-                    <span>Generations Held: <strong id="champ-gens">0</strong></span>
-                    <span>Defeated Challengers: <strong id="champ-kills" class="green">0</strong></span>
-                </div>
-                
-                <div class="latency-display">
-                    <span class="metric-label">MEASURED LATENCY</span>
-                    <div class="metric-val gold" id="champ-latency">8.88 <small>µs</small></div>
-                    <div class="speedup-badge green" id="champ-speedup-badge">Measured on Silicon</div>
-                </div>
-
-                <div class="kernel-spec">
-                    <div class="spec-row"><span>Registers / Thread:</span><strong id="champ-regs">32</strong></div>
-                    <div class="spec-row"><span>Loop Unroll:</span><strong id="champ-unroll">x4</strong></div>
-                    <div class="spec-row"><span>Cache Streaming:</span><strong id="champ-cs">Disabled</strong></div>
-                    <div class="spec-row"><span>PTX FMA:</span><strong id="champ-fma">Inline PTX</strong></div>
-                </div>
-            </div>
-
-            <!-- VS ENERGY CORE -->
-            <div class="vs-energy-core">
-                <div class="energy-ring"></div>
-                <div class="vs-text">VS</div>
-                <div class="status-orb" id="status-orb">READY</div>
-            </div>
-
-            <!-- CHALLENGER CARD (With ReactBits Spotlight) -->
-            <div class="combatant-card challenger-card glass-card spotlight-card" id="challenger-box">
-                <div class="card-header-challenger">
-                    <span id="challenger-badge" class="badge">CHALLENGER MUTANT</span>
-                    <span id="outcome-badge" class="badge-outcome">WAITING</span>
-                </div>
-                <h2 class="combatant-name cyan" id="challenger-name">Awaiting Contender...</h2>
-                <div class="combatant-meta">
-                    <span>Strategy: <strong id="challenger-strategy">Spawned by AI Model</strong></span>
-                    <span>Compile Time: <strong id="challenger-compile">-- ms</strong></span>
-                    <span>Registers: <strong id="challenger-regs">--</strong></span>
-                </div>
-
-                <div class="latency-display">
-                    <span class="metric-label">CHALLENGER LATENCY</span>
-                    <div class="metric-val cyan" id="challenger-latency">-- <small>µs</small></div>
-                    <div class="speedup-badge" id="challenger-delta">No Data</div>
-                </div>
-
-                <div class="challenger-decision" id="challenger-decision">
-                    <p id="decision-text">Click "RUN ARENA MATCH" or enable Auto-Tournament to spawn AI mutants on bare silicon.</p>
-                </div>
-            </div>
-        </section>
-
-        <!-- RLVR / GRPO COHORT GRID -->
-        <section class="grpo-cohort-section glass-card spotlight-card" id="grpo-cohort-panel" style="display: none;">
-            <div class="cohort-header">
-                <h3 class="section-title">🧬 RLVR / GRPO COHORT BATTLE (G=4 BARE-METAL RACERS)</h3>
-                <span class="badge purple">Group Relative Advantage Normalized</span>
-            </div>
-            <div class="cohort-grid" id="cohort-cards-container">
-                <!-- Dynamically populated -->
-            </div>
-        </section>
-
-        <!-- LATENCY COMPARISON RACE -->
-        <section class="race-bar-section glass-card spotlight-card">
-            <h3 class="section-title">⚡ REAL-TIME LATENCY RACE (LOWER IS FASTER)</h3>
-            <div class="race-track">
-                <!-- UNOPTIMIZED BASELINE -->
-                <div class="race-row">
-                    <div class="race-label"><span class="tag red">BASELINE</span> <span id="race-baseline-label">Unoptimized Silicon Baseline</span></div>
-                    <div class="bar-container">
-                        <div class="bar bar-triton" id="race-baseline-bar" style="width: 100%;">-- µs</div>
+            <!-- Reigning Champion Card -->
+            <div class="card combatant-card">
+                <div class="card-header">
+                    <div class="combatant-header-row">
+                        <span class="badge badge-warning">👑 Reigning Champion</span>
+                        <span class="badge badge-outline" id="champ-speedup-badge">Measured on Silicon</span>
+                    </div>
+                    <h2 class="card-title combatant-name" id="champ-name">SplitKV-Base-Champion</h2>
+                    <div class="combatant-meta">
+                        <span>Author: <strong id="champ-author">Architect</strong></span>
+                        <span>Gens Held: <strong id="champ-gens">0</strong></span>
+                        <span>Kills: <strong id="champ-kills" style="color: var(--emerald-500);">0</strong></span>
                     </div>
                 </div>
-                <!-- PYTORCH -->
-                <div class="race-row">
-                    <div class="race-label"><span class="tag blue">PYTORCH</span> PyTorch C++ Native (Cutlass/SDPA)</div>
-                    <div class="bar-container">
-                        <div class="bar bar-torch" id="race-torch-bar" style="width: 50%;">-- µs</div>
+
+                <div class="card-content" style="display: flex; flex-direction: column; gap: 1rem;">
+                    <div class="metric-card">
+                        <span class="metric-label">Measured Latency</span>
+                        <div class="metric-val" id="champ-latency">8.88 <small>µs</small></div>
+                    </div>
+
+                    <div class="spec-grid">
+                        <div class="spec-item"><span>Registers / Thread:</span><strong id="champ-regs">32</strong></div>
+                        <div class="spec-item"><span>Loop Unroll:</span><strong id="champ-unroll">x4</strong></div>
+                        <div class="spec-item"><span>Cache Streaming:</span><strong id="champ-cs">Disabled</strong></div>
+                        <div class="spec-item"><span>PTX FMA:</span><strong id="champ-fma">Inline PTX</strong></div>
                     </div>
                 </div>
-                <!-- CHAMPION -->
-                <div class="race-row">
-                    <div class="race-label"><span class="tag gold">CHAMPION</span> <span id="race-champ-label">SplitKV Champion</span></div>
-                    <div class="bar-container">
-                        <div class="bar bar-champ" id="race-champ-bar" style="width: 25%;">-- µs</div>
+            </div>
+
+            <!-- VS Center Divider -->
+            <div class="vs-divider">
+                <div class="vs-badge">VS</div>
+                <div class="badge badge-outline" id="status-orb" style="font-size: 0.6875rem;">READY</div>
+            </div>
+
+            <!-- Challenger Mutant Card -->
+            <div class="card combatant-card" id="challenger-box">
+                <div class="card-header">
+                    <div class="combatant-header-row">
+                        <span class="badge badge-secondary" id="challenger-badge">Challenger Mutant</span>
+                        <span class="badge badge-outline" id="outcome-badge">WAITING</span>
+                    </div>
+                    <h2 class="card-title combatant-name" id="challenger-name">Awaiting Contender...</h2>
+                    <div class="combatant-meta">
+                        <span>Strategy: <strong id="challenger-strategy">Spawned by AI Model</strong></span>
+                        <span>Compile: <strong id="challenger-compile">-- ms</strong></span>
+                        <span>Regs: <strong id="challenger-regs">--</strong></span>
                     </div>
                 </div>
-                <!-- CHALLENGER -->
-                <div class="race-row">
-                    <div class="race-label"><span class="tag cyan">CHALLENGER</span> <span id="race-challenger-label">Current Contender</span></div>
-                    <div class="bar-container">
-                        <div class="bar bar-challenger" id="race-challenger-bar" style="width: 0%;">--</div>
+
+                <div class="card-content" style="display: flex; flex-direction: column; gap: 1rem;">
+                    <div class="metric-card">
+                        <span class="metric-label">Challenger Latency</span>
+                        <div class="metric-val" id="challenger-latency">-- <small>µs</small></div>
+                    </div>
+
+                    <div style="font-size: 0.8125rem; color: hsl(var(--muted-foreground));" id="challenger-decision">
+                        <p id="decision-text">Click "Run Step" or trigger Auto-Tournament to spawn candidate kernels on bare silicon.</p>
+                        <div class="badge badge-outline" id="challenger-delta" style="margin-top: 0.5rem;">No Data</div>
                     </div>
                 </div>
             </div>
         </section>
 
-        <!-- BOTTOM PANELS: HALL OF FAME & COMBAT LOG -->
+        <!-- RLVR / GRPO Cohort Grid (Hidden by default, shown during GRPO) -->
+        <section class="card" id="grpo-cohort-panel" style="display: none;">
+            <div class="card-header">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h3 class="card-title">RLVR / GRPO Cohort Tournament (G=4 Bare-Metal Racers)</h3>
+                    <span class="badge badge-purple">Group Relative Advantage</span>
+                </div>
+                <p class="card-description">Four candidate actions evaluated in parallel against hardware timers.</p>
+            </div>
+            <div class="card-content">
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem;" id="cohort-cards-container">
+                    <!-- Populated dynamically by app.js -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Real-Time Latency Comparison Race -->
+        <section class="card">
+            <div class="card-header">
+                <h3 class="card-title">Real-Time Latency Race (Lower is Faster)</h3>
+                <p class="card-description">Comparing unoptimized baseline, native PyTorch, reigning champion, and challenger.</p>
+            </div>
+            <div class="card-content">
+                <div class="race-container">
+                    <!-- Baseline -->
+                    <div class="race-row">
+                        <div class="race-meta">
+                            <span class="badge badge-destructive">Baseline</span>
+                            <span id="race-baseline-label">Unoptimized Silicon</span>
+                        </div>
+                        <div class="progress-track">
+                            <div class="progress-bar bar-baseline" id="race-baseline-bar" style="width: 100%;">-- µs</div>
+                        </div>
+                    </div>
+                    <!-- PyTorch -->
+                    <div class="race-row">
+                        <div class="race-meta">
+                            <span class="badge badge-outline" style="color: #60a5fa; border-color: rgba(96, 165, 250, 0.3);">PyTorch</span>
+                            <span>Native (Cutlass/SDPA)</span>
+                        </div>
+                        <div class="progress-track">
+                            <div class="progress-bar bar-torch" id="race-torch-bar" style="width: 50%;">-- µs</div>
+                        </div>
+                    </div>
+                    <!-- Champion -->
+                    <div class="race-row">
+                        <div class="race-meta">
+                            <span class="badge badge-success">Champion</span>
+                            <span id="race-champ-label">SplitKV Champion</span>
+                        </div>
+                        <div class="progress-track">
+                            <div class="progress-bar bar-champ" id="race-champ-bar" style="width: 25%;">-- µs</div>
+                        </div>
+                    </div>
+                    <!-- Challenger -->
+                    <div class="race-row">
+                        <div class="race-meta">
+                            <span class="badge badge-purple">Challenger</span>
+                            <span id="race-challenger-label">Current Contender</span>
+                        </div>
+                        <div class="progress-track">
+                            <div class="progress-bar bar-challenger" id="race-challenger-bar" style="width: 0%;">--</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Lower Panels: Hall of Fame & Execution Log -->
         <section class="bottom-grid">
-            <!-- HALL OF FAME -->
-            <div class="glass-card hof-panel spotlight-card">
-                <h3 class="section-title">🏆 HALL OF FAME // ASCENDED MUTANTS</h3>
-                <table class="hof-table">
-                    <thead>
-                        <tr>
-                            <th>RANK</th>
-                            <th>MUTANT KERNEL</th>
-                            <th>LATENCY</th>
-                            <th>VS BASELINE</th>
-                            <th>TIME</th>
-                        </tr>
-                    </thead>
-                    <tbody id="hof-tbody">
-                        <tr>
-                            <td>#1 👑</td>
-                            <td>SplitKV-Base-Champion</td>
-                            <td class="gold">8.88 µs</td>
-                            <td class="green">3.18x</td>
-                            <td>Initial</td>
-                        </tr>
-                    </tbody>
-                </table>
+            <!-- Hall of Fame -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Hall of Fame</h3>
+                    <p class="card-description">Ascended Pareto-optimal mutants verified on bare-metal silicon.</p>
+                </div>
+                <div class="card-content" style="padding-top: 0;">
+                    <div class="table-container">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Rank</th>
+                                    <th>Mutant Kernel</th>
+                                    <th>Latency</th>
+                                    <th>Vs Baseline</th>
+                                    <th>Time</th>
+                                </tr>
+                            </thead>
+                            <tbody id="hof-tbody">
+                                <tr>
+                                    <td>1</td>
+                                    <td>SplitKV-Base-Champion</td>
+                                    <td style="color: var(--amber-500); font-family: 'Geist Mono', monospace; font-weight: 600;">8.88 µs</td>
+                                    <td style="color: var(--emerald-500); font-family: 'Geist Mono', monospace; font-weight: 600;">3.18x</td>
+                                    <td style="color: hsl(var(--muted-foreground));">Initial</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
 
-            <!-- LIVE SILICON COMBAT LOG -->
-            <div class="glass-card log-panel spotlight-card">
-                <h3 class="section-title">📜 LIVE SILICON COMBAT LOG</h3>
-                <div class="log-stream" id="log-stream">
-                    <div class="log-line green">🔥 Kernel Crucible initialized. GPU clocks locked to P0 1747 MHz.</div>
-                    <div class="log-line gold">👑 Reigning Champion: SplitKV-Base-Champion (8.88 µs).</div>
+            <!-- Execution Log -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Silicon Execution Log</h3>
+                    <p class="card-description">Live hardware profiling events and reinforcement learning actions.</p>
+                </div>
+                <div class="card-content" style="padding-top: 0;">
+                    <div class="log-container" id="log-stream">
+                        <div class="log-line green">Kernel Crucible initialized on RTX 2050 Mobile. Clocks locked to P0 1747 MHz.</div>
+                        <div class="log-line gold">Reigning Champion: SplitKV-Base-Champion (8.88 µs).</div>
+                    </div>
                 </div>
             </div>
         </section>

@@ -250,18 +250,18 @@ function updateUI(data) {
     isUnslothPatched = !!data.unsloth_patched;
     if (unslothStatusTag && unslothSpeedupTag && btnUnslothToggle) {
         if (isUnslothPatched) {
-            unslothStatusTag.className = "status-tag active";
-            unslothStatusTag.textContent = "STATUS: ACTIVE (CRUCIBLE KERNEL)";
+            unslothStatusTag.className = "badge badge-success";
+            unslothStatusTag.textContent = "Status: Active (Crucible SM86)";
             unslothHeaderBadge.textContent = "Patched (Crucible SM86)";
-            unslothHeaderBadge.className = "val green";
-            btnUnslothToggle.textContent = "🔄 REVERT TO PYTORCH NATIVE";
-            btnUnslothToggle.className = "btn btn-unsloth btn-revert";
+            unslothHeaderBadge.className = "badge badge-success";
+            btnUnslothToggle.textContent = "Revert to PyTorch Native";
+            btnUnslothToggle.className = "btn btn-outline btn-revert";
         } else {
-            unslothStatusTag.className = "status-tag";
-            unslothStatusTag.textContent = "STATUS: NATIVE PYTORCH";
-            unslothHeaderBadge.textContent = "Online (Port 8888)";
-            unslothHeaderBadge.className = "val purple";
-            btnUnslothToggle.textContent = "🦥 INJECT INTO UNSLOTH & PYTORCH";
+            unslothStatusTag.className = "badge badge-secondary";
+            unslothStatusTag.textContent = "Status: Native PyTorch";
+            unslothHeaderBadge.textContent = "Unsloth Online (Port 8888)";
+            unslothHeaderBadge.className = "badge badge-purple";
+            btnUnslothToggle.textContent = "Inject into Unsloth & PyTorch";
             btnUnslothToggle.className = "btn btn-unsloth";
         }
     }
@@ -271,23 +271,21 @@ function updateUI(data) {
         const pt = data.plateau_telemetry;
         const isSaturated = !!data.saturation_detected;
         if (isSaturated) {
-            saturationTag.textContent = "PLATEAU: SATURATED (0/50 NEAR GOAL)";
-            saturationTag.style.borderColor = "#ff0055";
-            saturationTag.style.color = "#ff0055";
+            saturationTag.textContent = "Plateau: Saturated (0/50 Near Goal)";
+            saturationTag.className = "badge badge-destructive";
+            saturationTag.style.borderColor = "";
+            saturationTag.style.color = "";
         } else if (pt) {
-            saturationTag.textContent = `WINDOW: ${pt.trials_in_window}/${pt.window_size} | 8.8x GOAL (±${pt.current_tolerance_pct}%) | NEAR: ${pt.near_goal_count}`;
-            if (pt.near_goal_count > 0) {
-                saturationTag.style.borderColor = "#00ff66";
-                saturationTag.style.color = "#00ff66";
-            } else {
-                saturationTag.style.borderColor = "#ffd700";
-                saturationTag.style.color = "#ffd700";
-            }
+            saturationTag.textContent = `Window: ${pt.trials_in_window}/${pt.window_size} | 8.8x Goal (±${pt.current_tolerance_pct}%) | Near: ${pt.near_goal_count}`;
+            saturationTag.className = pt.near_goal_count > 0 ? "badge badge-success" : "badge badge-warning";
+            saturationTag.style.borderColor = "";
+            saturationTag.style.color = "";
         } else {
             const withoutAscension = data.rounds_without_ascension || 0;
-            saturationTag.textContent = `PLATEAU: ${withoutAscension}/25`;
-            saturationTag.style.borderColor = "#ffd700";
-            saturationTag.style.color = "#ffd700";
+            saturationTag.textContent = `Plateau: ${withoutAscension}/25`;
+            saturationTag.className = "badge badge-warning";
+            saturationTag.style.borderColor = "";
+            saturationTag.style.color = "";
         }
     }
 
