@@ -11,6 +11,7 @@ sys.path.append(BASE_DIR)
 from engine import KernelCrucibleEngine
 from rlvr_grpo_engine import RLVREngine
 from test_suites import WORKLOAD_TEMPLATES
+import patch_unsloth
 
 engine = KernelCrucibleEngine()
 rlvr_engine = RLVREngine(group_size=4, baseline_latency_us=engine.gym_env.target_baseline_us)
@@ -27,6 +28,21 @@ def auto_loop():
             print("Auto loop error:", e)
             time.sleep(2)
 
+def build_status_payload():
+    return {
+        "champion": engine.champion,
+        "challenger": engine.last_challenger,
+        "telemetry": engine.get_gpu_telemetry(),
+        "hall_of_fame": engine.hall_of_fame[:8],
+        "round_num": engine.round_num,
+        "generation": engine.generation,
+        "auto_running": auto_running,
+        "log": engine.event_log[:20],
+        "last_grpo_cohort": getattr(engine, "last_grpo_cohort", None),
+        "baseline_latency_us": engine.gym_env.target_baseline_us,
+        "unsloth_patched": patch_unsloth.is_patched()
+    }
+
 class CrucibleHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=os.path.join(BASE_DIR, "static"), **kwargs)
@@ -38,19 +54,7 @@ class CrucibleHandler(SimpleHTTPRequestHandler):
             self.send_header("Content-Type", "application/json")
             self.send_header("Access-Control-Allow-Origin", "*")
             self.end_headers()
-            data = {
-                "champion": engine.champion,
-                "challenger": engine.last_challenger,
-                "telemetry": engine.get_gpu_telemetry(),
-                "hall_of_fame": engine.hall_of_fame[:8],
-                "round_num": engine.round_num,
-                "generation": engine.generation,
-                "auto_running": auto_running,
-                "log": engine.event_log[:20],
-                "last_grpo_cohort": getattr(engine, "last_grpo_cohort", None),
-                "baseline_latency_us": engine.gym_env.target_baseline_us
-            }
-            self.wfile.write(json.dumps(data).encode("utf-8"))
+            self.wfile.write(json.dumps(build_status_payload()).encode("utf-8"))
         elif parsed.path == "/api/stream":
             self.send_response(200)
             self.send_header("Content-Type", "text/event-stream")
@@ -59,19 +63,7 @@ class CrucibleHandler(SimpleHTTPRequestHandler):
             self.end_headers()
             try:
                 while True:
-                    data = {
-                        "champion": engine.champion,
-                        "challenger": engine.last_challenger,
-                        "telemetry": engine.get_gpu_telemetry(),
-                        "hall_of_fame": engine.hall_of_fame[:8],
-                        "round_num": engine.round_num,
-                        "generation": engine.generation,
-                        "auto_running": auto_running,
-                        "log": engine.event_log[:20],
-                        "last_grpo_cohort": getattr(engine, "last_grpo_cohort", None),
-                        "baseline_latency_us": engine.gym_env.target_baseline_us
-                    }
-                    msg = f"data: {json.dumps(data)}\n\n"
+                    msg = f"data: {json.dumps(build_status_payload())}\n\n"
                     self.wfile.write(msg.encode("utf-8"))
                     self.wfile.flush()
                     time.sleep(1.0)
@@ -87,6 +79,16 @@ class CrucibleHandler(SimpleHTTPRequestHandler):
                 "workloads": WORKLOAD_TEMPLATES
             }
             self.wfile.write(json.dumps(data).encode("utf-8"))
+        elif parsed.path == "/api/unsloth_status":
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            self.wfile.write(json.dumps({
+                "is_patched": patch_unsloth.is_patched(),
+                "champion": engine.champion["name"],
+                "latency_us": engine.champion["latency_us"]
+            }).encode("utf-8"))
         else:
             super().do_GET()
 
@@ -120,6 +122,12 @@ class CrucibleHandler(SimpleHTTPRequestHandler):
         elif parsed.path == "/api/stop_auto":
             auto_running = False
             self.wfile.write(json.dumps({"status": "auto_stopped"}).encode("utf-8"))
+        elif parsed.path == "/api/unsloth_patch":
+            patch_unsloth.patch_unsloth()
+            self.wfile.write(json.dumps({"status": "patched", "is_patched": True}).encode("utf-8"))
+        elif parsed.path == "/api/unsloth_unpatch":
+            patch_unsloth.unpatch_unsloth()
+            self.wfile.write(json.dumps({"status": "unpatched", "is_patched": False}).encode("utf-8"))
         else:
             self.wfile.write(json.dumps({"error": "not_found"}).encode("utf-8"))
 

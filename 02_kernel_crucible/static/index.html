@@ -39,8 +39,8 @@
                 <span class="val" id="temp-power-val">54°C | 6.8W</span>
             </div>
             <div class="badge-item">
-                <span class="label">LOCAL AI</span>
-                <span class="val purple">Unsloth Gemma-2B</span>
+                <span class="label">UNSLOTH RUNTIME</span>
+                <span class="val purple" id="unsloth-header-badge">Online (Port 8888)</span>
             </div>
         </div>
     </header>
@@ -81,6 +81,26 @@
             </div>
         </section>
 
+        <!-- UNSLOTH DROP-IN MONKEY PATCH BANNER -->
+        <section class="unsloth-panel glass-card">
+            <div class="unsloth-info">
+                <div class="unsloth-title-row">
+                    <span class="unsloth-logo">🦥</span>
+                    <div>
+                        <h3 class="unsloth-heading">UNSLOTH & PYTORCH DROP-IN MONKEY PATCH</h3>
+                        <p class="unsloth-subheading">Seamlessly routes all attention & softmax layers to our silicon-evolved bare-metal CUDA kernel.</p>
+                    </div>
+                </div>
+                <div class="unsloth-status-tags">
+                    <span class="status-tag" id="unsloth-status-tag">STATUS: NATIVE PYTORCH</span>
+                    <span class="status-tag speedup-tag" id="unsloth-speedup-tag">SPEEDUP: +0.0%</span>
+                </div>
+            </div>
+            <div class="unsloth-actions">
+                <button class="btn btn-unsloth" id="btn-unsloth-toggle">🦥 INJECT INTO UNSLOTH & PYTORCH</button>
+            </div>
+        </section>
+
         <!-- CENTER RING: CHAMPION VS CHALLENGER -->
         <section class="coliseum-ring">
             <!-- REIGNING CHAMPION CARD -->
@@ -95,13 +115,13 @@
                 
                 <div class="latency-display">
                     <span class="metric-label">MEASURED LATENCY</span>
-                    <div class="metric-val gold" id="champ-latency">8.40 <small>µs</small></div>
-                    <div class="speedup-badge green">4.83x Faster than Triton</div>
+                    <div class="metric-val gold" id="champ-latency">8.88 <small>µs</small></div>
+                    <div class="speedup-badge green" id="champ-speedup-badge">Measured on Silicon</div>
                 </div>
 
                 <div class="kernel-spec">
-                    <div class="spec-row"><span>Registers / Thread:</span><strong id="champ-regs">34</strong></div>
-                    <div class="spec-row"><span>Loop Unroll:</span><strong id="champ-unroll">x2</strong></div>
+                    <div class="spec-row"><span>Registers / Thread:</span><strong id="champ-regs">32</strong></div>
+                    <div class="spec-row"><span>Loop Unroll:</span><strong id="champ-unroll">x4</strong></div>
                     <div class="spec-row"><span>Cache Streaming:</span><strong id="champ-cs">Disabled</strong></div>
                     <div class="spec-row"><span>PTX FMA:</span><strong id="champ-fma">Inline PTX</strong></div>
                 </div>
@@ -154,25 +174,25 @@
         <section class="race-bar-section glass-card">
             <h3 class="section-title">⚡ REAL-TIME LATENCY RACE (LOWER IS FASTER)</h3>
             <div class="race-track">
-                <!-- TRITON -->
+                <!-- UNOPTIMIZED BASELINE -->
                 <div class="race-row">
-                    <div class="race-label"><span class="tag red">BASELINE</span> OpenAI Triton Fused Decode</div>
+                    <div class="race-label"><span class="tag red">BASELINE</span> <span id="race-baseline-label">Unoptimized Silicon Baseline</span></div>
                     <div class="bar-container">
-                        <div class="bar bar-triton" style="width: 100%;">40.59 µs</div>
+                        <div class="bar bar-triton" id="race-baseline-bar" style="width: 100%;">-- µs</div>
                     </div>
                 </div>
                 <!-- PYTORCH -->
                 <div class="race-row">
-                    <div class="race-label"><span class="tag blue">PYTORCH</span> PyTorch C++ SDPA (Cutlass)</div>
+                    <div class="race-label"><span class="tag blue">PYTORCH</span> PyTorch C++ Native (Cutlass/SDPA)</div>
                     <div class="bar-container">
-                        <div class="bar bar-torch" style="width: 47.7%;">19.36 µs (2.1x faster)</div>
+                        <div class="bar bar-torch" id="race-torch-bar" style="width: 50%;">-- µs</div>
                     </div>
                 </div>
                 <!-- CHAMPION -->
                 <div class="race-row">
                     <div class="race-label"><span class="tag gold">CHAMPION</span> <span id="race-champ-label">SplitKV Champion</span></div>
                     <div class="bar-container">
-                        <div class="bar bar-champ" id="race-champ-bar" style="width: 20.7%;">8.40 µs (4.8x faster)</div>
+                        <div class="bar bar-champ" id="race-champ-bar" style="width: 25%;">-- µs</div>
                     </div>
                 </div>
                 <!-- CHALLENGER -->
@@ -196,7 +216,7 @@
                             <th>RANK</th>
                             <th>MUTANT KERNEL</th>
                             <th>LATENCY</th>
-                            <th>VS TRITON</th>
+                            <th>VS BASELINE</th>
                             <th>TIME</th>
                         </tr>
                     </thead>
@@ -204,8 +224,8 @@
                         <tr>
                             <td>#1 👑</td>
                             <td>SplitKV-Base-Champion</td>
-                            <td class="gold">8.40 µs</td>
-                            <td class="green">4.83x</td>
+                            <td class="gold">8.88 µs</td>
+                            <td class="green">3.18x</td>
                             <td>Initial</td>
                         </tr>
                     </tbody>
@@ -217,7 +237,7 @@
                 <h3 class="section-title">📜 LIVE SILICON COMBAT LOG</h3>
                 <div class="log-stream" id="log-stream">
                     <div class="log-line green">🔥 Kernel Crucible initialized. GPU clocks locked to P0 1747 MHz.</div>
-                    <div class="log-line gold">👑 Reigning Champion: SplitKV-Base-Champion (8.40 µs).</div>
+                    <div class="log-line gold">👑 Reigning Champion: SplitKV-Base-Champion (8.88 µs).</div>
                 </div>
             </div>
         </section>

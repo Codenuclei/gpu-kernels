@@ -10,3 +10,5 @@ __pycache__/
 01_softmax/ten_x_multiplier
 01_softmax/breakthrough_10x
 01_softmax/verify_split_kv
+01_softmax/test_*
+**/unsloth_compiled_cache/
