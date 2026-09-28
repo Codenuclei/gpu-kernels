@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CUDA Execution Trace // 01 Naive Softmax</title>
+<style>
+  :root {
+    --bg: #09090b;
+    --surface: #121215;
+    --border: #27272a;
+    --border-light: #3f3f46;
+    --text-primary: #f4f4f5;
+    --text-muted: #71717a;
+    --accent: #ffffff;
+    --active-line: rgba(255, 255, 255, 0.08);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text-primary);
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono", Menlo, Consolas, monospace;
+    font-size: 13px;
+    line-height: 1.5;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Top Navigation & Status */
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 16px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .title-group { display: flex; align-items: baseline; gap: 12px; }
+  h1 { font-size: 14px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; }
+  .badge {
+    border: 1px solid var(--border-light);
+    color: var(--text-muted);
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 999px;
+  }
+
+  /* Main Workspace */
+  main {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr 420px;
+    height: calc(100vh - 128px);
+  }
+
+  /* Canvas Stage */
+  .stage-panel {
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--border);
+    background: var(--bg);
+    position: relative;
+  }
+  .stage-header {
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    color: var(--text-muted);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  canvas {
+    flex: 1;
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  /* Code Panel */
+  .code-panel {
+    background: var(--surface);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .code-header {
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border);
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .code-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 0;
+    font-size: 12px;
+  }
+  .code-line {
+    padding: 2px 20px;
+    display: flex;
+    gap: 16px;
+    transition: background 0.1s ease;
+  }
+  .code-line.active {
+    background: var(--active-line);
+    border-left: 2px solid #fff;
+    padding-left: 18px;
+    color: #fff;
+    font-weight: 500;
+  }
+  .line-num {
+    color: var(--text-muted);
+    user-select: none;
+    text-align: right;
+    width: 24px;
+  }
+  .line-text { flex: 1; white-space: pre; }
+
+  /* Register / Telemetry Box */
+  .telemetry-box {
+    border-top: 1px solid var(--border);
+    padding: 16px 20px;
+    background: var(--bg);
+  }
+  .telemetry-title {
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 10px;
+  }
+  .registers-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+  .reg-card {
+    border: 1px solid var(--border);
+    padding: 8px 10px;
+    border-radius: 4px;
+  }
+  .reg-name { font-size: 10px; color: var(--text-muted); text-transform: uppercase; }
+  .reg-val { font-size: 13px; font-weight: 600; color: #fff; margin-top: 2px; }
+
+  /* Controls Footer */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--bg);
+  }
+  .btn-group { display: flex; gap: 8px; align-items: center; }
+  button {
+    background: var(--surface);
+    color: var(--text-primary);
+    border: 1px solid var(--border-light);
+    padding: 6px 14px;
+    font-family: inherit;
+    font-size: 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  button:hover { background: #27272a; border-color: #52525b; }
+  button.primary { background: #fff; color: #000; border-color: #fff; font-weight: 600; }
+  button.primary:hover { background: #e4e4e7; }
+  .scrubber {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+    max-width: 480px;
+    margin: 0 32px;
+  }
+  input[type="range"] {
+    flex: 1;
+    accent-color: #fff;
+    cursor: pointer;
+  }
+  .speed-ctrl { display: flex; align-items: center; gap: 8px; color: var(--text-muted); font-size: 12px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="title-group">
+    <h1>01_Softmax // v1_naive</h1>
+    <span class="badge">Hardware View: 1 Thread = 1 Row</span>
+  </div>
+  <div style="color: var(--text-muted); font-size: 12px;">
+    Architecture: NVIDIA SM 8.6 (Ampere) // 4096-wide Row Vector
+  </div>
+</header>
+
+<main>
+  <div class="stage-panel">
+    <div class="stage-header">
+      <span id="phase-label">PHASE: INITIALIZING</span>
+      <span id="clock-ticks">STEP 000 / 120</span>
+    </div>
+    <canvas id="animCanvas"></canvas>
+  </div>
+
+  <div class="code-panel">
+    <div class="code-header">Kernel Execution Trace (CUDA C++)</div>
+    <div class="code-body" id="codeContainer"></div>
+    <div class="telemetry-box">
+      <div class="telemetry-title">Hardware Register State (Thread 0)</div>
+      <div class="registers-grid">
+        <div class="reg-card">
+          <div class="reg-name">row</div>
+          <div class="reg-val" id="reg-row">0</div>
+        </div>
+        <div class="reg-card">
+          <div class="reg-name">j (Index)</div>
+          <div class="reg-val" id="reg-j">0</div>
+        </div>
+        <div class="reg-card">
+          <div class="reg-name">x[j] (Value)</div>
+          <div class="reg-val" id="reg-xj">--</div>
+        </div>
+        <div class="reg-card">
+          <div class="reg-name">max_val (m)</div>
+          <div class="reg-val" id="reg-max">-FLT_MAX</div>
+        </div>
+        <div class="reg-card">
+          <div class="reg-name">sum (s)</div>
+          <div class="reg-val" id="reg-sum">0.000</div>
+        </div>
+        <div class="reg-card">
+          <div class="reg-name">y[j] (Normalized)</div>
+          <div class="reg-val" id="reg-yj">--</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div class="btn-group">
+    <button id="btnPlay" class="primary">PLAY</button>
+    <button id="btnPrev">STEP BACK</button>
+    <button id="btnNext">STEP FWD</button>
+    <button id="btnReset">RESET</button>
+  </div>
+
+  <div class="scrubber">
+    <span style="font-size: 11px; color: var(--text-muted);">TIMELINE</span>
+    <input type="range" id="timelineSlider" min="0" max="100" value="0">
+    <span id="timeLabel" style="font-size: 11px; width: 40px; text-align: right;">0%</span>
+  </div>
+
+  <div class="speed-ctrl">
+    <span>SPEED:</span>
+    <button class="speed-btn" data-speed="0.5">0.5x</button>
+    <button class="speed-btn primary" data-speed="1">1x</button>
+    <button class="speed-btn" data-speed="2">2x</button>
+  </div>
+</footer>
+
+<script>
+// Raw Code Lines
+const codeLines = [
+  '__global__ void softmax_v1_naive(const float* input, float* output, int N, int D) {',
+  '    // Step 1: Thread Identity & Boundary Check',
+  '    int row = blockIdx.x * blockDim.x + threadIdx.x;',
+  '    if (row >= N) return;',
+  '',
+  '    // Step 2: Row Vector Pointers',
+  '    const float* x = input  + row * D;',
+  '    float*       y = output + row * D;',
+  '',
+  '    // Step 3: Loop 1 — Max Value Scan (Numerical Stability)',
+  '    float max_val = -FLT_MAX;',
+  '    for (int j = 0; j < D; j++) {',
+  '        max_val = fmaxf(max_val, x[j]);',
+  '    }',
+  '',
+  '    // Step 4: Loop 2 — Exponentials & Sum Accumulation',
+  '    float sum = 0.0f;',
+  '    for (int j = 0; j < D; j++) {',
+  '        y[j] = expf(x[j] - max_val);',
+  '        sum += y[j];',
+  '    }',
+  '',
+  '    // Step 5: Loop 3 — Probability Normalization',
+  '    float inv_sum = 1.0f / sum;',
+  '    for (int j = 0; j < D; j++) {',
+  '        y[j] *= inv_sum;',
+  '    }',
+  '}'
+];
+
+// Populate Code Block
+const codeContainer = document.getElementById('codeContainer');
+codeLines.forEach((text, i) => {
+  const lineEl = document.createElement('div');
+  lineEl.className = 'code-line';
+  lineEl.id = `line-${i}`;
+  lineEl.innerHTML = `<span class="line-num">${i + 1}</span><span class="line-text">${escapeHtml(text)}</span>`;
+  codeContainer.appendChild(lineEl);
+});
+
+function escapeHtml(str) {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function highlightLine(lineIndex) {
+  document.querySelectorAll('.code-line').forEach(el => el.classList.remove('active'));
+  if (lineIndex >= 0) {
+    const el = document.getElementById(`line-${lineIndex}`);
+    if (el) {
+      el.classList.add('active');
+      el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+  }
+}
+
+// Canvas Setup
+const canvas = document.getElementById('animCanvas');
+const ctx = canvas.getContext('2d');
+let width, height;
+
+function resizeCanvas() {
+  const rect = canvas.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  width = rect.width;
+  height = rect.height;
+  canvas.width = width * dpr;
+  canvas.height = height * dpr;
+  ctx.scale(dpr, dpr);
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+// Sample Data Row (8 elements visual representation of 4096)
+const sampleRow = [-1.5, 3.2, 0.4, 7.8, -0.2, 5.1, 2.0, 1.2];
+const N_COLS = sampleRow.length;
+
+// Simulation State
+let currentStep = 0;
+const TOTAL_STEPS = 120;
+let isPlaying = false;
+let playbackSpeed = 1;
+let animTimer = null;
+
+// Telemetry DOM
+const regRow = document.getElementById('reg-row');
+const regJ = document.getElementById('reg-j');
+const regXj = document.getElementById('reg-xj');
+const regMax = document.getElementById('reg-max');
+const regSum = document.getElementById('reg-sum');
+const regYj = document.getElementById('reg-yj');
+const phaseLabel = document.getElementById('phase-label');
+const clockTicks = document.getElementById('clock-ticks');
+const timelineSlider = document.getElementById('timelineSlider');
+const timeLabel = document.getElementById('timeLabel');
+const btnPlay = document.getElementById('btnPlay');
+
+function updateSimulation(step) {
+  currentStep = Math.max(0, Math.min(TOTAL_STEPS, step));
+  timelineSlider.value = (currentStep / TOTAL_STEPS) * 100;
+  timeLabel.innerText = Math.round(timelineSlider.value) + '%';
+  clockTicks.innerText = `STEP ${String(currentStep).padStart(3, '0')} / ${TOTAL_STEPS}`;
+
+  // Evaluate State based on step
+  let activeLine = 0;
+  let phase = 'INIT';
+  let activeCol = -1;
+  let runningMax = -Infinity;
+  let runningSum = 0;
+  let calculatedExp = new Array(N_COLS).fill(null);
+  let finalProb = new Array(N_COLS).fill(null);
+
+  if (currentStep < 10) {
+    // Identity setup
+    activeLine = 2;
+    phase = 'STEP 1: THREAD IDENTITY SETUP';
+  } else if (currentStep < 20) {
+    // Pointer setup
+    activeLine = 6;
+    phase = 'STEP 2: ADDRESS POINTER ARITHMETIC';
+  } else if (currentStep < 55) {
+    // Loop 1: Find Max
+    phase = 'STEP 3: LOOP 1 — FINDING MAXIMUM (m)';
+    activeLine = 12;
+    const progress = (currentStep - 20) / 35;
+    activeCol = Math.min(N_COLS - 1, Math.floor(progress * N_COLS));
+    
+    for (let c = 0; c <= activeCol; c++) {
+      if (sampleRow[c] > runningMax) runningMax = sampleRow[c];
+    }
+  } else if (currentStep < 90) {
+    // Loop 2: Exp & Sum
+    phase = 'STEP 4: LOOP 2 — EXPONENTIATE & ACCUMULATE';
+    activeLine = 18;
+    runningMax = Math.max(...sampleRow);
+    const progress = (currentStep - 55) / 35;
+    activeCol = Math.min(N_COLS - 1, Math.floor(progress * N_COLS));
+
+    for (let c = 0; c <= activeCol; c++) {
+      calculatedExp[c] = Math.exp(sampleRow[c] - runningMax);
+      runningSum += calculatedExp[c];
+    }
+  } else {
+    // Loop 3: Normalize
+    phase = 'STEP 5: LOOP 3 — DIVIDE BY SUM (PROBABILITIES)';
+    activeLine = 24;
+    runningMax = Math.max(...sampleRow);
+    for (let c = 0; c < N_COLS; c++) {
+      calculatedExp[c] = Math.exp(sampleRow[c] - runningMax);
+      runningSum += calculatedExp[c];
+    }
+    const progress = (currentStep - 90) / 30;
+    activeCol = Math.min(N_COLS - 1, Math.floor(progress * N_COLS));
+
+    for (let c = 0; c < N_COLS; c++) {
+      if (c <= activeCol) {
+        finalProb[c] = calculatedExp[c] / runningSum;
+      }
+    }
+  }
+
+  phaseLabel.innerText = phase;
+  highlightLine(activeLine);
+
+  // Update telemetry
+  regRow.innerText = '0';
+  regJ.innerText = activeCol >= 0 ? activeCol : '--';
+  regXj.innerText = activeCol >= 0 ? sampleRow[activeCol].toFixed(1) : '--';
+  regMax.innerText = runningMax === -Infinity ? '-FLT_MAX' : runningMax.toFixed(2);
+  regSum.innerText = runningSum.toFixed(3);
+  regYj.innerText = (activeCol >= 0 && finalProb[activeCol] !== null) ? finalProb[activeCol].toFixed(3) : '--';
+
+  // Render Frame
+  drawFrame({
+    activeCol,
+    runningMax,
+    runningSum,
+    calculatedExp,
+    finalProb,
+    phase
+  });
+}
+
+function drawFrame(state) {
+  ctx.clearRect(0, 0, width, height);
+
+  // Layout Metrics
+  const startX = 60;
+  const cellW = Math.min(80, (width - 120) / N_COLS);
+  const cellH = 48;
+  const rowInputY = 120;
+  const rowExpY = 250;
+  const rowNormY = 380;
+
+  // Title / Section Headers
+  ctx.font = '11px monospace';
+  ctx.fillStyle = '#71717a';
+  ctx.fillText('GLOBAL MEMORY: INPUT MATRIX [ROW 0 OF 1024]', startX, rowInputY - 18);
+  ctx.fillText('GLOBAL MEMORY: INTERMEDIATE EXPONENTIALS exp(x[j] - m)', startX, rowExpY - 18);
+  ctx.fillText('GLOBAL MEMORY: NORMALIZED OUTPUT y[j] = exp / sum', startX, rowNormY - 18);
+
+  // Draw Input Buffer Cells
+  for (let i = 0; i < N_COLS; i++) {
+    const x = startX + i * cellW;
+    const isCurrent = (i === state.activeCol && currentStep >= 20 && currentStep < 55);
+
+    // Box stroke
+    ctx.strokeStyle = isCurrent ? '#ffffff' : '#27272a';
+    ctx.lineWidth = isCurrent ? 2 : 1;
+    ctx.fillStyle = isCurrent ? '#27272a' : '#121215';
+    ctx.fillRect(x, rowInputY, cellW - 6, cellH);
+    ctx.strokeRect(x, rowInputY, cellW - 6, cellH);
+
+    // Index label
+    ctx.font = '10px monospace';
+    ctx.fillStyle = '#71717a';
+    ctx.fillText(`j=${i}`, x + 6, rowInputY + 14);
+
+    // Value
+    ctx.font = '13px monospace';
+    ctx.fillStyle = isCurrent ? '#ffffff' : '#e4e4e7';
+    ctx.fillText(sampleRow[i].toFixed(1), x + 6, rowInputY + 34);
+
+    // Active Pointer Arrow
+    if (isCurrent) {
+      ctx.beginPath();
+      ctx.moveTo(x + (cellW - 6) / 2, rowInputY - 8);
+      ctx.lineTo(x + (cellW - 6) / 2 - 4, rowInputY - 14);
+      ctx.lineTo(x + (cellW - 6) / 2 + 4, rowInputY - 14);
+      ctx.fillStyle = '#fff';
+      ctx.fill();
+    }
+  }
+
+  // Draw Intermediate Exponential Cells
+  for (let i = 0; i < N_COLS; i++) {
+    const x = startX + i * cellW;
+    const isCurrent = (i === state.activeCol && currentStep >= 55 && currentStep < 90);
+    const hasVal = state.calculatedExp[i] !== null;
+
+    ctx.strokeStyle = isCurrent ? '#ffffff' : '#27272a';
+    ctx.lineWidth = isCurrent ? 2 : 1;
+    ctx.fillStyle = '#121215';
+    ctx.fillRect(x, rowExpY, cellW - 6, cellH);
+    ctx.strokeRect(x, rowExpY, cellW - 6, cellH);
+
+    ctx.font = '10px monospace';
+    ctx.fillStyle = '#71717a';
+    ctx.fillText(`exp[${i}]`, x + 6, rowExpY + 14);
+
+    if (hasVal) {
+      ctx.font = '12px monospace';
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(state.calculatedExp[i].toFixed(2), x + 6, rowExpY + 34);
+    }
+  }
+
+  // Draw Normalized Probability Cells
+  for (let i = 0; i < N_COLS; i++) {
+    const x = startX + i * cellW;
+    const isCurrent = (i === state.activeCol && currentStep >= 90);
+    const hasVal = state.finalProb[i] !== null;
+
+    ctx.strokeStyle = isCurrent ? '#ffffff' : '#27272a';
+    ctx.lineWidth = isCurrent ? 2 : 1;
+    ctx.fillStyle = '#121215';
+    ctx.fillRect(x, rowNormY, cellW - 6, cellH);
+    ctx.strokeRect(x, rowNormY, cellW - 6, cellH);
+
+    ctx.font = '10px monospace';
+    ctx.fillStyle = '#71717a';
+    ctx.fillText(`P(${i})`, x + 6, rowNormY + 14);
+
+    if (hasVal) {
+      ctx.font = '12px monospace';
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(state.finalProb[i].toFixed(3), x + 6, rowNormY + 34);
+
+      // Mini Probability Bar
+      const barH = 4;
+      const barW = (cellW - 18) * state.finalProb[i];
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(x + 6, rowNormY + cellH - 8, barW, barH);
+    }
+  }
+
+  // Draw Core Architectural Callout Box at bottom
+  const boxY = height - 110;
+  ctx.strokeStyle = '#27272a';
+  ctx.fillStyle = '#121215';
+  ctx.fillRect(startX, boxY, width - 120, 70);
+  ctx.strokeRect(startX, boxY, width - 120, 70);
+
+  ctx.font = '11px monospace';
+  ctx.fillStyle = '#71717a';
+  ctx.fillText('WHY THIS IS NAIVE // THE BOTTLENECK:', startX + 16, boxY + 22);
+
+  ctx.fillStyle = '#f4f4f5';
+  ctx.fillText('1 Thread reads 4096 floats in Loop 1, writes 4096 in Loop 2, reads & writes again in Loop 3.', startX + 16, boxY + 40);
+  ctx.fillStyle = '#a1a1aa';
+  ctx.fillText('Total Global Memory Traffic = 4 passes per row! The remaining 1023 threads on SMs sit idle.', startX + 16, boxY + 56);
+}
+
+// Animation Loop
+function tick() {
+  if (isPlaying) {
+    if (currentStep < TOTAL_STEPS) {
+      updateSimulation(currentStep + 1);
+      animTimer = setTimeout(tick, 50 / playbackSpeed);
+    } else {
+      isPlaying = false;
+      btnPlay.innerText = 'PLAY';
+    }
+  }
+}
+
+btnPlay.addEventListener('click', () => {
+  isPlaying = !isPlaying;
+  btnPlay.innerText = isPlaying ? 'PAUSE' : 'PLAY';
+  if (isPlaying) {
+    if (currentStep >= TOTAL_STEPS) currentStep = 0;
+    tick();
+  } else {
+    clearTimeout(animTimer);
+  }
+});
+
+document.getElementById('btnNext').addEventListener('click', () => {
+  isPlaying = false;
+  btnPlay.innerText = 'PLAY';
+  clearTimeout(animTimer);
+  updateSimulation(currentStep + 1);
+});
+
+document.getElementById('btnPrev').addEventListener('click', () => {
+  isPlaying = false;
+  btnPlay.innerText = 'PLAY';
+  clearTimeout(animTimer);
+  updateSimulation(currentStep - 1);
+});
+
+document.getElementById('btnReset').addEventListener('click', () => {
+  isPlaying = false;
+  btnPlay.innerText = 'PLAY';
+  clearTimeout(animTimer);
+  updateSimulation(0);
+});
+
+timelineSlider.addEventListener('input', (e) => {
+  isPlaying = false;
+  btnPlay.innerText = 'PLAY';
+  clearTimeout(animTimer);
+  const step = Math.round((e.target.value / 100) * TOTAL_STEPS);
+  updateSimulation(step);
+});
+
+document.querySelectorAll('.speed-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.speed-btn').forEach(b => b.classList.remove('primary'));
+    btn.classList.add('primary');
+    playbackSpeed = parseFloat(btn.dataset.speed);
+  });
+});
+
+// Initialize Frame 0
+updateSimulation(0);
+</script>
+</body>
+</html>

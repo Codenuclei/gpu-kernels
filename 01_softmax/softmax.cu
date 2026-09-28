@@ -106,12 +106,16 @@ void softmax_cpu(const float* input, float* output, int N, int D) {
 // One thread per element, use atomics or multiple kernel launches
 // HINT: Start simple. Even 1 thread per row works. Just get it correct.
 __global__ void softmax_v1_naive(const float* input, float* output, int N, int D) {
-    // TODO: implement me
-    //
-    // Simplest approach: one thread handles one entire row
-    // int row = blockIdx.x * blockDim.x + threadIdx.x;
-    // if (row >= N) return;
-    // ... find max, compute exp-sum, normalize for this row
+    int row = blockIdx.x * blockDim.x + threadIdx.x;
+    if (row >= N) return;
+    const float* x = input + row * D;
+    float* y = output + row * D;
+
+    float max_val = -FLT_MAX;
+    for (int col = 0; col < D; col++) max_val = fmaxf(max_val, x[col]);
+    float sum = 0.0f;
+    for (int col = 0; col < D; col++) sum += expf(x[col] - max_val);
+    for (int col = 0; col < D; col++) y[col] = expf(x[col] - max_val) / sum;
 }
 
 // VERSION 2: Shared memory reduction
@@ -119,14 +123,36 @@ __global__ void softmax_v1_naive(const float* input, float* output, int N, int D
 // HINT: Look at the parallel reduction slides from NVIDIA:
 //   https://developer.download.nvidia.com/assets/cuda/files/reduction.pdf
 __global__ void softmax_v2_shared(const float* input, float* output, int N, int D) {
-    // TODO: implement me
-    //
-    // int row = blockIdx.x;
-    // int tid = threadIdx.x;
-    // extern __shared__ float smem[];
-    // ... cooperatively reduce max across threads
-    // ... cooperatively reduce sum across threads
-    // ... each thread normalizes its elements
+    int row = blockIdx.x;
+    int tid = threadIdx.x;
+    if (row >= N) return;
+    const float* x = input + row * D;
+    float* y = output + row * D;
+    extern __shared__ float smem[];
+
+    float thread_max = -FLT_MAX;
+    for (int col = tid; col < D; col += blockDim.x)
+        thread_max = fmaxf(thread_max, x[col]);
+    smem[tid] = thread_max;
+    __syncthreads();
+    for (int stride = blockDim.x / 2; stride > 0; stride >>= 1) {
+        if (tid < stride) smem[tid] = fmaxf(smem[tid], smem[tid + stride]);
+        __syncthreads();
+    }
+    float max_val = smem[0];
+
+    float thread_sum = 0.0f;
+    for (int col = tid; col < D; col += blockDim.x)
+        thread_sum += expf(x[col] - max_val);
+    smem[tid] = thread_sum;
+    __syncthreads();
+    for (int stride = blockDim.x / 2; stride > 0; stride >>= 1) {
+        if (tid < stride) smem[tid] += smem[tid + stride];
+        __syncthreads();
+    }
+    float sum = smem[0];
+    for (int col = tid; col < D; col += blockDim.x)
+        y[col] = expf(x[col] - max_val) / sum;
 }
 
 // VERSION 3: Online softmax (single pass)
@@ -140,12 +166,44 @@ __global__ void softmax_v2_shared(const float* input, float* output, int N, int 
 //         running_sum += exp(x - running_max)
 //   Then reduce (max, sum) pairs across threads using the same correction.
 __global__ void softmax_v3_online(const float* input, float* output, int N, int D) {
-    // TODO: implement me
-    //
-    // Each thread processes a strided subset of the row
-    // Maintain local (max_val, sum_val)
-    // Reduce pairs across the block
-    // Final pass: write exp(x - global_max) / global_sum
+    int row = blockIdx.x;
+    int tid = threadIdx.x;
+    if (row >= N) return;
+    const float* x = input + row * D;
+    float* y = output + row * D;
+    __shared__ float block_max[256];
+    __shared__ float block_sum[256];
+
+    float local_max = -FLT_MAX;
+    float local_sum = 0.0f;
+    for (int col = tid; col < D; col += blockDim.x) {
+        float value = x[col];
+        if (value > local_max) {
+            local_sum = local_sum * expf(local_max - value) + 1.0f;
+            local_max = value;
+        } else {
+            local_sum += expf(value - local_max);
+        }
+    }
+    block_max[tid] = local_max;
+    block_sum[tid] = local_sum;
+    __syncthreads();
+    for (int stride = blockDim.x / 2; stride > 0; stride >>= 1) {
+        if (tid < stride) {
+            float other_max = block_max[tid + stride];
+            float other_sum = block_sum[tid + stride];
+            float merged_max = fmaxf(block_max[tid], other_max);
+            block_sum[tid] =
+                block_sum[tid] * expf(block_max[tid] - merged_max) +
+                other_sum * expf(other_max - merged_max);
+            block_max[tid] = merged_max;
+        }
+        __syncthreads();
+    }
+    float max_val = block_max[0];
+    float sum = block_sum[0];
+    for (int col = tid; col < D; col += blockDim.x)
+        y[col] = expf(x[col] - max_val) / sum;
 }
 
 // ─── VALIDATION ─────────────────────────────────────────────────────────────
@@ -199,53 +257,51 @@ int main() {
     printf("─── Correctness ───\n");
 
     // ── V1: Naive ──
-    // TODO: uncomment when implemented
-    // softmax_v1_naive<<<(N+255)/256, 256>>>(d_input, d_output, N, D);
-    // CUDA_CHECK(cudaMemcpy(h_gpu_out, d_output, bytes, cudaMemcpyDeviceToHost));
-    // validate(h_gpu_out, h_cpu_out, N, D, "v1_naive");
+    softmax_v1_naive<<<(N+255)/256, 256>>>(d_input, d_output, N, D);
+    CUDA_CHECK(cudaGetLastError());
+    CUDA_CHECK(cudaMemcpy(h_gpu_out, d_output, bytes, cudaMemcpyDeviceToHost));
+    validate(h_gpu_out, h_cpu_out, N, D, "v1_naive");
 
     // ── V2: Shared Memory ──
-    // TODO: uncomment when implemented
-    // int block_size = 256;
-    // int smem_bytes = block_size * sizeof(float);
-    // softmax_v2_shared<<<N, block_size, smem_bytes>>>(d_input, d_output, N, D);
-    // CUDA_CHECK(cudaMemcpy(h_gpu_out, d_output, bytes, cudaMemcpyDeviceToHost));
-    // validate(h_gpu_out, h_cpu_out, N, D, "v2_shared");
+    int block_size = 256;
+    int smem_bytes = block_size * sizeof(float);
+    softmax_v2_shared<<<N, block_size, smem_bytes>>>(d_input, d_output, N, D);
+    CUDA_CHECK(cudaGetLastError());
+    CUDA_CHECK(cudaMemcpy(h_gpu_out, d_output, bytes, cudaMemcpyDeviceToHost));
+    validate(h_gpu_out, h_cpu_out, N, D, "v2_shared");
 
     // ── V3: Online ──
-    // TODO: uncomment when implemented
-    // softmax_v3_online<<<N, 256>>>(d_input, d_output, N, D);
-    // CUDA_CHECK(cudaMemcpy(h_gpu_out, d_output, bytes, cudaMemcpyDeviceToHost));
-    // validate(h_gpu_out, h_cpu_out, N, D, "v3_online");
+    softmax_v3_online<<<N, 256>>>(d_input, d_output, N, D);
+    CUDA_CHECK(cudaGetLastError());
+    CUDA_CHECK(cudaMemcpy(h_gpu_out, d_output, bytes, cudaMemcpyDeviceToHost));
+    validate(h_gpu_out, h_cpu_out, N, D, "v3_online");
 
     printf("\n─── Benchmarks ───\n");
 
-    // TODO: uncomment each as you implement
-    // float ms_v1 = time_kernel([&]{
-    //     softmax_v1_naive<<<(N+255)/256, 256>>>(d_input, d_output, N, D);
-    // });
-    // printf("  v1_naive:   %8.3f ms  (%6.1f GB/s)\n", ms_v1,
-    //        2.0*bytes/ms_v1/1e6);  // read + write = 2x bytes
+    float ms_v1 = time_kernel([&]{
+        softmax_v1_naive<<<(N+255)/256, 256>>>(d_input, d_output, N, D);
+    });
+    printf("  v1_naive:   %8.3f ms  (%6.1f GB/s)\n", ms_v1,
+           2.0*bytes/ms_v1/1e6);
 
-    // float ms_v2 = time_kernel([&]{
-    //     softmax_v2_shared<<<N, 256, 256*sizeof(float)>>>(d_input, d_output, N, D);
-    // });
-    // printf("  v2_shared:  %8.3f ms  (%6.1f GB/s)\n", ms_v2,
-    //        2.0*bytes/ms_v2/1e6);
+    float ms_v2 = time_kernel([&]{
+        softmax_v2_shared<<<N, 256, 256*sizeof(float)>>>(d_input, d_output, N, D);
+    });
+    printf("  v2_shared:  %8.3f ms  (%6.1f GB/s)\n", ms_v2,
+           2.0*bytes/ms_v2/1e6);
 
-    // float ms_v3 = time_kernel([&]{
-    //     softmax_v3_online<<<N, 256>>>(d_input, d_output, N, D);
-    // });
-    // printf("  v3_online:  %8.3f ms  (%6.1f GB/s)\n", ms_v3,
-    //        2.0*bytes/ms_v3/1e6);
+    float ms_v3 = time_kernel([&]{
+        softmax_v3_online<<<N, 256>>>(d_input, d_output, N, D);
+    });
+    printf("  v3_online:  %8.3f ms  (%6.1f GB/s)\n", ms_v3,
+           2.0*bytes/ms_v3/1e6);
 
-    // printf("\n  Speedup v2/v1: %.2fx\n", ms_v1/ms_v2);
-    // printf("  Speedup v3/v1: %.2fx\n", ms_v1/ms_v3);
+    printf("\n  Speedup v2/v1: %.2fx\n", ms_v1/ms_v2);
+    printf("  Speedup v3/v1: %.2fx\n", ms_v1/ms_v3);
 
-    // Theoretical peak: your RTX 2050 mem BW
-    // printf("\n  RTX 2050 theoretical peak: ~224 GB/s\n");
-    // printf("  Your v3 achieves: %.1f%% of peak\n",
-    //        (2.0*bytes/ms_v3/1e6)/224.0*100.0);
+    printf("\n  RTX 2050 theoretical peak: ~224 GB/s\n");
+    printf("  Your v3 achieves: %.1f%% of peak\n",
+           (2.0*bytes/ms_v3/1e6)/224.0*100.0);
 
     // Cleanup
     CUDA_CHECK(cudaFree(d_input));

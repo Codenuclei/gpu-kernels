@@ -1,1 +1,5 @@
 01_softmax/softmax
+*.so
+*.o
+*.out
+__pycache__/
