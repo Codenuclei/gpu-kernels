@@ -86,12 +86,9 @@ class VerifiableRewardOracle:
         measured_us = float(out.split("RESULT_SUCCESS:")[1].strip())
 
         # ---------------- RLVR STRICT REWARD FUNCTION ----------------
-        # Base reward for passing syntax + math: +1.0
-        # Performance bonus relative to baseline (40.59 us Triton):
-        speedup_ratio = self.baseline_latency_us / measured_us
-        
-        # RLVR verifiable reward
-        reward = 1.0 + (speedup_ratio - 1.0) * 2.0
+        # Pure measured speedup ratio relative to live measured baseline:
+        speedup_ratio = (self.baseline_latency_us / measured_us) if self.baseline_latency_us else (25.0 / measured_us)
+        reward = speedup_ratio
         
         return {
             "verifiable_compile_pass": True,

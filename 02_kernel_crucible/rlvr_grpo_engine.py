@@ -14,8 +14,8 @@ class RLVREngine:
     Samples a cohort of G=4 candidate kernels, verifies them with the deterministic
     RLVR Oracle, and optimizes the policy using group relative advantages.
     """
-    def __init__(self, group_size=4):
-        self.oracle = VerifiableRewardOracle(baseline_latency_us=40.59)
+    def __init__(self, group_size=4, baseline_latency_us=None):
+        self.oracle = VerifiableRewardOracle(baseline_latency_us=baseline_latency_us)
         self.group_size = group_size
         self.generation = 0
         

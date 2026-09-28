@@ -14,25 +14,26 @@ LLM_ENDPOINT = "http://127.0.0.1:34247/v1/chat/completions"
 
 class KernelCrucibleEngine:
     def __init__(self):
-        self.gym_env = KernelOptimizationEnv(target_baseline_us=40.59)
+        self.gym_env = KernelOptimizationEnv()
         self.obs, _ = self.gym_env.reset()
         
         self.generation = 0
         self.round_num = 0
         self.total_reward = 0.0
         
+        init_lat = float(self.gym_env.champion_latency)
         self.champion = {
             "id": "champ-gen0",
             "name": self.gym_env.champion_name,
-            "author": "Architect (Base)",
-            "latency_us": 13.39,
-            "registers": 34,
-            "unroll": 2,
+            "author": "Hardware Initial Benchmark",
+            "latency_us": init_lat,
+            "registers": 32,
+            "unroll": 1,
             "cache_streaming": 0,
-            "ptx_fma_mode": 1,
+            "ptx_fma_mode": 0,
             "status": "CROWNED",
             "generation": 0,
-            "code_snippet": "asm(\"ex2.approx.f32 %0, %1;\");\nasm(\"fma.rn.f32 %0, %1, %2, %3;\");",
+            "code_snippet": "// Initial hardware measured baseline",
             "defeated_count": 0
         }
         
@@ -41,8 +42,8 @@ class KernelCrucibleEngine:
                 "rank": 1,
                 "name": self.champion["name"],
                 "author": self.champion["author"],
-                "latency_us": 13.39,
-                "speedup_vs_triton": "3.03x",
+                "latency_us": init_lat,
+                "speedup_vs_triton": "1.00x",
                 "generation": 0,
                 "achieved_at": time.strftime("%H:%M:%S")
             }
@@ -159,7 +160,7 @@ Reply ONLY in JSON:
                 "name": self.champion["name"],
                 "author": challenger["strategy"],
                 "latency_us": info["latency_us"],
-                "speedup_vs_triton": f"{40.59 / info['latency_us']:.2f}x",
+                "speedup_vs_triton": f"{self.gym_env.target_baseline_us / info['latency_us']:.2f}x",
                 "generation": self.generation,
                 "achieved_at": time.strftime("%H:%M:%S")
             })
@@ -233,7 +234,7 @@ Reply ONLY in JSON:
                 "name": self.champion["name"],
                 "author": challenger["strategy"],
                 "latency_us": best["latency_us"],
-                "speedup_vs_triton": f"{40.59 / best['latency_us']:.2f}x",
+                "speedup_vs_triton": f"{self.gym_env.target_baseline_us / best['latency_us']:.2f}x",
                 "generation": self.generation,
                 "achieved_at": time.strftime("%H:%M:%S")
             })

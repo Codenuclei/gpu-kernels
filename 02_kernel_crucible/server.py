@@ -12,7 +12,7 @@ from engine import KernelCrucibleEngine
 from rlvr_grpo_engine import RLVREngine
 
 engine = KernelCrucibleEngine()
-rlvr_engine = RLVREngine(group_size=4)
+rlvr_engine = RLVREngine(group_size=4, baseline_latency_us=engine.gym_env.target_baseline_us)
 auto_running = False
 auto_thread = None
 
@@ -46,7 +46,8 @@ class CrucibleHandler(SimpleHTTPRequestHandler):
                 "generation": engine.generation,
                 "auto_running": auto_running,
                 "log": engine.event_log[:20],
-                "last_grpo_cohort": getattr(engine, "last_grpo_cohort", None)
+                "last_grpo_cohort": getattr(engine, "last_grpo_cohort", None),
+                "baseline_latency_us": engine.gym_env.target_baseline_us
             }
             self.wfile.write(json.dumps(data).encode("utf-8"))
         elif parsed.path == "/api/stream":
@@ -66,7 +67,8 @@ class CrucibleHandler(SimpleHTTPRequestHandler):
                         "generation": engine.generation,
                         "auto_running": auto_running,
                         "log": engine.event_log[:20],
-                        "last_grpo_cohort": getattr(engine, "last_grpo_cohort", None)
+                        "last_grpo_cohort": getattr(engine, "last_grpo_cohort", None),
+                        "baseline_latency_us": engine.gym_env.target_baseline_us
                     }
                     msg = f"data: {json.dumps(data)}\n\n"
                     self.wfile.write(msg.encode("utf-8"))

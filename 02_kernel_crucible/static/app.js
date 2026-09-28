@@ -71,15 +71,20 @@ function updateUI(data) {
         champCs.textContent = c.cache_streaming ? "Enabled (ld.global.cs)" : "Standard";
         champFma.textContent = c.ptx_fma_mode ? "Inline PTX (fma.rn)" : "Standard C++";
 
+        const baseUs = data.baseline_latency_us || 25.0;
+        const statBaseEl = document.getElementById('stat-baseline');
+        if (statBaseEl) statBaseEl.textContent = `${baseUs.toFixed(1)} µs`;
+
         raceChampLabel.textContent = `${c.name} (${c.latency_us.toFixed(2)} µs)`;
-        const champPct = Math.min(100, Math.max(5, (c.latency_us / 40.59) * 100));
+        const champPct = Math.min(100, Math.max(5, (c.latency_us / baseUs) * 100));
         raceChampBar.style.width = `${champPct}%`;
-        raceChampBar.textContent = `${c.latency_us.toFixed(2)} µs (${(40.59 / c.latency_us).toFixed(1)}x faster)`;
+        raceChampBar.textContent = `${c.latency_us.toFixed(2)} µs (${(baseUs / c.latency_us).toFixed(1)}x faster)`;
     }
 
     // Challenger
     if (data.challenger) {
         const ch = data.challenger;
+        const baseUs = data.baseline_latency_us || 25.0;
         challengerName.textContent = ch.name;
         challengerStrategy.textContent = ch.strategy;
         challengerCompile.textContent = `${ch.compile_time_ms.toFixed(0)} ms`;
@@ -112,7 +117,7 @@ function updateUI(data) {
         }
 
         raceChallengerLabel.textContent = `${ch.name} (${ch.latency_us < 990 ? ch.latency_us.toFixed(2) + ' µs' : 'CRASH'})`;
-        const chPct = Math.min(100, Math.max(5, (ch.latency_us / 40.59) * 100));
+        const chPct = Math.min(100, Math.max(5, (ch.latency_us / baseUs) * 100));
         raceChallengerBar.style.width = ch.latency_us < 990 ? `${chPct}%` : '100%';
         raceChallengerBar.textContent = ch.latency_us < 990 ? `${ch.latency_us.toFixed(2)} µs` : 'FAILED / CRASHED';
     }

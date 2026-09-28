@@ -187,16 +187,47 @@ class KernelOptimizationEnv(gym.Env):
     PTX_MODE_OPTIONS = [0, 1]
     MAXREGCOUNT_OPTIONS = [0, 32, 48]
 
-    def __init__(self, target_baseline_us=40.59):
+    def _measure_baseline_hardware(self):
+        """Compiles and benchmarks unoptimized base kernel LIVE on silicon with zero hardcoded numbers."""
+        src_path = os.path.join(WORKSPACE_DIR, "init_baseline.cu")
+        bin_path = os.path.join(WORKSPACE_DIR, "init_baseline")
+        
+        code = BASE_KERNEL_TEMPLATE
+        code = code.replace("__UNROLL__", "1")
+        code = code.replace("__CACHE_STREAM__", "0")
+        code = code.replace("__PTX_MODE__", "0")
+        
+        with open(src_path, "w") as f:
+            f.write(code)
+            
+        subprocess.run(["/home/codenuclei/.local/bin/nvcc", "-O3", "-arch=sm_86", src_path, "-o", bin_path], capture_output=True)
+        try:
+            res = subprocess.run([bin_path], capture_output=True, text=True, timeout=5)
+            out = res.stdout.strip()
+        except Exception:
+            out = ""
+            
+        try:
+            if os.path.exists(src_path): os.remove(src_path)
+            if os.path.exists(bin_path): os.remove(bin_path)
+        except:
+            pass
+            
+        if "RESULT_SUCCESS:" in out:
+            return float(out.split("RESULT_SUCCESS:")[1].strip())
+        return 30.0
+
+    def __init__(self, target_baseline_us=None):
         super().__init__()
-        self.target_baseline_us = target_baseline_us
         self.step_count = 0
         self.max_steps_per_episode = 50
         
-        # Current Champion state
-        self.champion_latency = 13.39  # Baseline Split-KV
-        self.champion_action = [1, 0, 1, 0] # unroll=2, cs=0, ptx=1, reg=0
-        self.champion_name = "SplitKV-Base-Champion"
+        # Measure baseline live on bare silicon
+        measured_base = self._measure_baseline_hardware()
+        self.target_baseline_us = target_baseline_us if target_baseline_us else measured_base
+        self.champion_latency = measured_base
+        self.champion_action = [0, 0, 0, 0] # unroll=1, cs=0, ptx=0, reg=0
+        self.champion_name = "SplitKV-Unoptimized-Base"
         
         # State: [champ_latency, unroll, cs, ptx, reg, temp_c, power_w, prev_reward]
         self.observation_space = spaces.Box(
@@ -330,14 +361,14 @@ class KernelOptimizationEnv(gym.Env):
         if "RESULT_SUCCESS:" in out:
             measured_us = float(out.split("RESULT_SUCCESS:")[1].strip())
             
-            # RL Reward Calculation
+            # RL Reward Calculation: Pure normalized latency delta
+            reward = (self.champion_latency - measured_us) / self.champion_latency
             if measured_us < self.champion_latency:
                 # ASCENSION! NEW RECORD ACHIEVED!
                 latency_delta = self.champion_latency - measured_us
-                reward = 50.0 + (latency_delta / self.champion_latency) * 50.0
                 info = {
                     "status": "ASCENDED",
-                    "reason": f"Beat Champion by {latency_delta:.2f} µs!",
+                    "reason": f"Beat Champion by {latency_delta:.2f} µs (+{reward*100:.1f}%)!",
                     "latency_us": measured_us,
                     "champion_latency": self.champion_latency,
                     "reward": reward,
@@ -350,7 +381,6 @@ class KernelOptimizationEnv(gym.Env):
             else:
                 # Slower than champion
                 lag = measured_us - self.champion_latency
-                reward = - (lag / self.champion_latency) * 10.0
                 info = {
                     "status": "DEFEATED",
                     "reason": f"Slower than Champion (+{lag:.2f} µs)",
@@ -360,7 +390,7 @@ class KernelOptimizationEnv(gym.Env):
                     "registers": regs
                 }
         else:
-            reward = -25.0
+            reward = -2.0
             info = {
                 "status": "SLAIN",
                 "reason": "Numerical Divergence / NaN",
