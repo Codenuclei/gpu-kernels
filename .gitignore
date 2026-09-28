@@ -6,3 +6,4 @@ __pycache__/
 01_softmax/softmax_advanced
 01_softmax/softmax_warp
 01_softmax/bench_ptx_cudnn
+01_softmax/peak_100x_softmax
