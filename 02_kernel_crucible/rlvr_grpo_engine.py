@@ -58,21 +58,46 @@ class RLVREngine:
             })
         return cohort
 
-    def run_grpo_round(self):
+    def run_grpo_round(self, ai_cohort=None):
         self.generation += 1
-        cohort = self.sample_cohort()
+        unroll_options = [1, 2, 4, 8]
+        cs_options = [0, 1]
+        ptx_options = [0, 1]
+
+        if ai_cohort and len(ai_cohort) == self.group_size:
+            cohort = []
+            for i, p in enumerate(ai_cohort):
+                act = p["action"]
+                u_idx, c_idx, pt_idx = act[0] % 4, act[1] % 2, act[2] % 2
+                cohort.append({
+                    "cand_id": f"g{self.generation}_c{i+1}",
+                    "name": p.get("name", f"GRPO-AI-{i+1}"),
+                    "strategy": p.get("strategy", "Concurrent LLM Slot"),
+                    "unroll_idx": u_idx,
+                    "cs_idx": c_idx,
+                    "ptx_idx": pt_idx,
+                    "unroll": unroll_options[u_idx],
+                    "cache_streaming": cs_options[c_idx],
+                    "ptx_fma_mode": ptx_options[pt_idx],
+                })
+        else:
+            cohort = self.sample_cohort()
+
         results = []
         
-        # Evaluate all G candidates through the Verifiable Reward Oracle
-        for cand in cohort:
+        # Parallel evaluation across CPU threads & GPU streams (Saturate 4 workers)
+        from concurrent.futures import ThreadPoolExecutor
+
+        def eval_candidate(cand):
             code = BASE_KERNEL_TEMPLATE
             code = code.replace("__UNROLL__", str(cand["unroll"]))
             code = code.replace("__CACHE_STREAM__", str(cand["cache_streaming"]))
             code = code.replace("__PTX_MODE__", str(cand["ptx_fma_mode"]))
-            
             ver_res = self.oracle.verify_and_score(code, cand["cand_id"])
-            combined = {**cand, **ver_res}
-            results.append(combined)
+            return {**cand, **ver_res}
+
+        with ThreadPoolExecutor(max_workers=self.group_size) as executor:
+            results = list(executor.map(eval_candidate, cohort))
 
         # ---------------- COMPUTE GRPO ADVANTAGES ----------------
         rewards = np.array([r["reward"] for r in results], dtype=np.float32)
