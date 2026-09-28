@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KERNEL CRUCIBLE // THE SILICON COLISEUM</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;800&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="stars"></div>
+    <div class="grid-overlay"></div>
+
+    <header class="app-header">
+        <div class="brand">
+            <span class="glitch-icon">⚡</span>
+            <div>
+                <h1 class="brand-title">KERNEL CRUCIBLE</h1>
+                <p class="brand-subtitle">AUTONOMOUS SILICON EVOLUTION // RTX 2050 AMPERE</p>
+            </div>
+        </div>
+
+        <div class="hardware-telemetry">
+            <div class="badge-item">
+                <span class="label">HARDWARE</span>
+                <span class="val cyan">RTX 2050 (16 SMs)</span>
+            </div>
+            <div class="badge-item">
+                <span class="label">P-STATE</span>
+                <span class="val green" id="pstate-val">P0 (Locked)</span>
+            </div>
+            <div class="badge-item">
+                <span class="label">SM CLOCK</span>
+                <span class="val gold" id="clock-val">1,747 MHz</span>
+            </div>
+            <div class="badge-item">
+                <span class="label">TEMP / POWER</span>
+                <span class="val" id="temp-power-val">54°C | 6.8W</span>
+            </div>
+            <div class="badge-item">
+                <span class="label">LOCAL AI</span>
+                <span class="val purple">Unsloth Gemma-2B</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="arena-layout">
+        <!-- TOP CONTROL BAR -->
+        <section class="control-panel glass-card">
+            <div class="panel-left">
+                <button class="btn btn-primary" id="btn-step">⚔️ RUN ARENA MATCH</button>
+                <button class="btn btn-secondary" id="btn-auto">⚡ START AUTO-TOURNAMENT</button>
+                <div class="auto-indicator" id="auto-indicator">
+                    <span class="pulse-dot"></span> <span id="auto-status-text">MANUAL MODE</span>
+                </div>
+            </div>
+            <div class="panel-stats">
+                <div class="stat-box">
+                    <span class="stat-title">TOURNAMENT ROUND</span>
+                    <span class="stat-num cyan" id="stat-round">0</span>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-title">MUTANT GENERATION</span>
+                    <span class="stat-num purple" id="stat-gen">0</span>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-title">BASELINE (TRITON)</span>
+                    <span class="stat-num red">40.59 µs</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- CENTER RING: CHAMPION VS CHALLENGER -->
+        <section class="coliseum-ring">
+            <!-- REIGNING CHAMPION CARD -->
+            <div class="combatant-card champion-card glass-card">
+                <div class="card-crown">👑 REIGNING CHAMPION</div>
+                <h2 class="combatant-name gold" id="champ-name">SplitKV-Base-Champion</h2>
+                <div class="combatant-meta">
+                    <span>Author: <strong id="champ-author">Architect</strong></span>
+                    <span>Generations Held: <strong id="champ-gens">0</strong></span>
+                    <span>Defeated Challengers: <strong id="champ-kills" class="green">0</strong></span>
+                </div>
+                
+                <div class="latency-display">
+                    <span class="metric-label">MEASURED LATENCY</span>
+                    <div class="metric-val gold" id="champ-latency">8.40 <small>µs</small></div>
+                    <div class="speedup-badge green">4.83x Faster than Triton</div>
+                </div>
+
+                <div class="kernel-spec">
+                    <div class="spec-row"><span>Registers / Thread:</span><strong id="champ-regs">34</strong></div>
+                    <div class="spec-row"><span>Loop Unroll:</span><strong id="champ-unroll">x2</strong></div>
+                    <div class="spec-row"><span>Cache Streaming:</span><strong id="champ-cs">Disabled</strong></div>
+                    <div class="spec-row"><span>PTX FMA:</span><strong id="champ-fma">Inline PTX</strong></div>
+                </div>
+            </div>
+
+            <!-- VS ENERGY CORE -->
+            <div class="vs-energy-core">
+                <div class="energy-ring"></div>
+                <div class="vs-text">VS</div>
+                <div class="status-orb" id="status-orb">READY</div>
+            </div>
+
+            <!-- CHALLENGER CARD -->
+            <div class="combatant-card challenger-card glass-card" id="challenger-box">
+                <div class="card-header-challenger">
+                    <span id="challenger-badge" class="badge">CHALLENGER MUTANT</span>
+                    <span id="outcome-badge" class="badge-outcome">WAITING</span>
+                </div>
+                <h2 class="combatant-name cyan" id="challenger-name">Awaiting Contender...</h2>
+                <div class="combatant-meta">
+                    <span>Strategy: <strong id="challenger-strategy">Spawned by AI Model</strong></span>
+                    <span>Compile Time: <strong id="challenger-compile">-- ms</strong></span>
+                    <span>Registers: <strong id="challenger-regs">--</strong></span>
+                </div>
+
+                <div class="latency-display">
+                    <span class="metric-label">CHALLENGER LATENCY</span>
+                    <div class="metric-val cyan" id="challenger-latency">-- <small>µs</small></div>
+                    <div class="speedup-badge" id="challenger-delta">No Data</div>
+                </div>
+
+                <div class="challenger-decision" id="challenger-decision">
+                    <p id="decision-text">Click "RUN ARENA MATCH" or enable Auto-Tournament to spawn AI mutants on bare silicon.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- LATENCY COMPARISON RACE -->
+        <section class="race-bar-section glass-card">
+            <h3 class="section-title">⚡ REAL-TIME LATENCY RACE (LOWER IS FASTER)</h3>
+            <div class="race-track">
+                <!-- TRITON -->
+                <div class="race-row">
+                    <div class="race-label"><span class="tag red">BASELINE</span> OpenAI Triton Fused Decode</div>
+                    <div class="bar-container">
+                        <div class="bar bar-triton" style="width: 100%;">40.59 µs</div>
+                    </div>
+                </div>
+                <!-- PYTORCH -->
+                <div class="race-row">
+                    <div class="race-label"><span class="tag blue">PYTORCH</span> PyTorch C++ SDPA (Cutlass)</div>
+                    <div class="bar-container">
+                        <div class="bar bar-torch" style="width: 47.7%;">19.36 µs (2.1x faster)</div>
+                    </div>
+                </div>
+                <!-- CHAMPION -->
+                <div class="race-row">
+                    <div class="race-label"><span class="tag gold">CHAMPION</span> <span id="race-champ-label">SplitKV Champion</span></div>
+                    <div class="bar-container">
+                        <div class="bar bar-champ" id="race-champ-bar" style="width: 20.7%;">8.40 µs (4.8x faster)</div>
+                    </div>
+                </div>
+                <!-- CHALLENGER -->
+                <div class="race-row">
+                    <div class="race-label"><span class="tag cyan">CHALLENGER</span> <span id="race-challenger-label">Current Contender</span></div>
+                    <div class="bar-container">
+                        <div class="bar bar-challenger" id="race-challenger-bar" style="width: 0%;">--</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- BOTTOM PANELS: HALL OF FAME & COMBAT LOG -->
+        <section class="bottom-grid">
+            <!-- HALL OF FAME -->
+            <div class="glass-card hof-panel">
+                <h3 class="section-title">🏆 HALL OF FAME // ASCENDED MUTANTS</h3>
+                <table class="hof-table">
+                    <thead>
+                        <tr>
+                            <th>RANK</th>
+                            <th>MUTANT KERNEL</th>
+                            <th>LATENCY</th>
+                            <th>VS TRITON</th>
+                            <th>TIME</th>
+                        </tr>
+                    </thead>
+                    <tbody id="hof-tbody">
+                        <tr>
+                            <td>#1 👑</td>
+                            <td>SplitKV-Base-Champion</td>
+                            <td class="gold">8.40 µs</td>
+                            <td class="green">4.83x</td>
+                            <td>Initial</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- LIVE SILICON COMBAT LOG -->
+            <div class="glass-card log-panel">
+                <h3 class="section-title">📜 LIVE SILICON COMBAT LOG</h3>
+                <div class="log-stream" id="log-stream">
+                    <div class="log-line green">🔥 Kernel Crucible initialized. GPU clocks locked to P0 1747 MHz.</div>
+                    <div class="log-line gold">👑 Reigning Champion: SplitKV-Base-Champion (8.40 µs).</div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script src="app.js"></script>
+</body>
+</html>
