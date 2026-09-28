@@ -614,3 +614,93 @@ if (workloadSelect) {
         });
     });
 }
+
+// Competition Export & Timing Diagnostic Handlers
+const btnExportLeetGPU = document.getElementById('btn-export-leetgpu');
+const btnExportTensara = document.getElementById('btn-export-tensara');
+const btnRunDiag = document.getElementById('btn-run-diag');
+const btnCopyCode = document.getElementById('btn-copy-code');
+const submissionContainer = document.getElementById('submission-code-container');
+const submissionPre = document.getElementById('submission-code-pre');
+const submissionBadge = document.getElementById('submission-platform-badge');
+const diagResultsContent = document.getElementById('diag-results-content');
+const diagTbody = document.getElementById('diag-tbody');
+const diagVerdict = document.getElementById('diag-verdict');
+
+function fetchAndShowSubmission(platform) {
+    if (submissionContainer) submissionContainer.style.display = 'block';
+    if (submissionPre) submissionPre.textContent = 'Generating standalone submission code...';
+    if (submissionBadge) submissionBadge.textContent = platform === 'tensara' ? 'Tensara / PyTorch Extension' : 'LeetGPU Standalone C++ (solve.cu)';
+    
+    fetch(`/api/export_submission?platform=${platform}`)
+        .then(r => r.json())
+        .then(data => {
+            if (submissionPre) submissionPre.textContent = data.code;
+        })
+        .catch(err => {
+            if (submissionPre) submissionPre.textContent = `Error exporting: ${err}`;
+        });
+}
+
+if (btnExportLeetGPU) {
+    btnExportLeetGPU.addEventListener('click', () => fetchAndShowSubmission('leetgpu'));
+}
+
+if (btnExportTensara) {
+    btnExportTensara.addEventListener('click', () => fetchAndShowSubmission('tensara'));
+}
+
+if (btnCopyCode) {
+    btnCopyCode.addEventListener('click', () => {
+        if (!submissionPre) return;
+        navigator.clipboard.writeText(submissionPre.textContent).then(() => {
+            btnCopyCode.textContent = "Copied!";
+            setTimeout(() => { btnCopyCode.textContent = "Copy to Clipboard"; }, 2000);
+        });
+    });
+}
+
+if (btnRunDiag) {
+    btnRunDiag.addEventListener('click', () => {
+        btnRunDiag.disabled = true;
+        btnRunDiag.textContent = "Benchmarking on Silicon...";
+        if (diagResultsContent) diagResultsContent.style.display = 'block';
+        if (diagVerdict) diagVerdict.textContent = "Running L2 cache flushes, CUDA Graph captures, and host launch overhead benchmarks on RTX 2050...";
+        
+        fetch('/api/run_diagnostic', { method: 'POST' })
+            .then(r => r.json())
+            .then(data => {
+                btnRunDiag.disabled = false;
+                btnRunDiag.textContent = "Run Timing Diagnostic";
+                
+                if (diagTbody && data.diagnostics) {
+                    diagTbody.innerHTML = '';
+                    data.diagnostics.forEach(d => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td><strong>${d.N} × ${d.D}</strong></td>
+                            <td style="color: var(--emerald-500); font-family: 'Geist Mono', monospace;">${d.pure_silicon_us.toFixed(2)} µs</td>
+                            <td style="color: var(--sky-500); font-family: 'Geist Mono', monospace;">${d.graph_launch_us.toFixed(2)} µs</td>
+                            <td style="color: hsl(var(--muted-foreground)); font-family: 'Geist Mono', monospace;">${d.host_wall_us.toFixed(2)} µs</td>
+                            <td style="color: var(--amber-500); font-family: 'Geist Mono', monospace;">+${d.launch_overhead_us.toFixed(2)} µs</td>
+                            <td style="font-family: 'Geist Mono', monospace;">${d.cold_cache_us.toFixed(2)} µs</td>
+                            <td style="font-family: 'Geist Mono', monospace;">${d.torch_native_us.toFixed(2)} µs</td>
+                            <td><span class="badge badge-success">${d.silicon_speedup_vs_torch}</span></td>
+                        `;
+                        diagTbody.appendChild(tr);
+                    });
+                }
+                
+                if (diagVerdict && data.key_findings) {
+                    diagVerdict.innerHTML = `<strong>Verdict:</strong> ${data.key_findings.launch_overhead_analysis} ${data.key_findings.cuda_graph_benefit}`;
+                }
+                
+                fetch('/api/status').then(r => r.json()).then(updateUI);
+            })
+            .catch(err => {
+                btnRunDiag.disabled = false;
+                btnRunDiag.textContent = "Run Timing Diagnostic";
+                if (diagVerdict) diagVerdict.textContent = `Diagnostic error: ${err}`;
+            });
+    });
+}

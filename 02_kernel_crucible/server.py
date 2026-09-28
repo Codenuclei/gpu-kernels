@@ -4,7 +4,7 @@ import json
 import time
 import threading
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
-from urllib.parse import urlparse
+from urllib.parse import urlparse, parse_qs
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(BASE_DIR)
@@ -93,6 +93,20 @@ class CrucibleHandler(SimpleHTTPRequestHandler):
                 "champion": engine.champion["name"],
                 "latency_us": engine.champion["latency_us"]
             }).encode("utf-8"))
+        elif parsed.path == "/api/export_submission":
+            import submission_exporter
+            query = parse_qs(parsed.query)
+            platform = query.get("platform", ["leetgpu"])[0]
+            champ = engine.champion
+            if platform == "tensara":
+                code = submission_exporter.generate_pytorch_tensara_submission(champ)
+            else:
+                code = submission_exporter.generate_leetgpu_submission(champ, engine.current_workload)
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            self.wfile.write(json.dumps({"platform": platform, "code": code}).encode("utf-8"))
         else:
             super().do_GET()
 
@@ -138,6 +152,12 @@ class CrucibleHandler(SimpleHTTPRequestHandler):
             success = auto_post_train.run_unsloth_sft(dataset_path)
             engine.event_log.insert(0, "🎓 [POST-TRAIN] Distilled Hall of Fame into serving model weights!")
             self.wfile.write(json.dumps({"status": "post_trained", "success": success}).encode("utf-8"))
+        elif parsed.path == "/api/run_diagnostic":
+            import timing_diagnostic
+            diag = timing_diagnostic.run_hardware_diagnostics()
+            d0 = diag['diagnostics'][0]
+            engine.event_log.insert(0, f"🔬 [DIAGNOSTIC] N=1024, D=64: Pure Silicon: {d0['pure_silicon_us']:.2f} µs | CUDA Graph: {d0['graph_launch_us']:.2f} µs | Host Launch: {d0['host_wall_us']:.2f} µs (Overhead: {d0['launch_overhead_us']:.2f} µs)")
+            self.wfile.write(json.dumps(diag).encode("utf-8"))
         else:
             self.wfile.write(json.dumps({"error": "not_found"}).encode("utf-8"))
 

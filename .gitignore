@@ -12,3 +12,5 @@ __pycache__/
 01_softmax/verify_split_kv
 01_softmax/test_*
 **/unsloth_compiled_cache/
+02_kernel_crucible/*_bin
+02_kernel_crucible/*.so

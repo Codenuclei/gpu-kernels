@@ -238,6 +238,58 @@
             </div>
         </section>
 
+        <!-- Online Competition Exporter & Launch Diagnostics Card -->
+        <section class="card">
+            <div class="card-header">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+                    <div>
+                        <h3 class="card-title">Online Competition Exporter & Hardware Timing Diagnostics</h3>
+                        <p class="card-description">Export the champion into LeetGPU / Tensara signatures and diagnose CUDA Graph vs host PCIe launch overhead.</p>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                        <button class="btn btn-primary" id="btn-export-leetgpu">Export LeetGPU (solve.cu)</button>
+                        <button class="btn btn-secondary" id="btn-export-tensara">Export Tensara (PyTorch)</button>
+                        <button class="btn btn-outline" id="btn-run-diag">Run Timing Diagnostic</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Diagnostics Results Table -->
+            <div class="card-content" id="diag-results-content" style="display: none; padding-top: 0;">
+                <div class="table-container" style="margin-bottom: 0.75rem;">
+                    <table class="table" id="diag-table">
+                        <thead>
+                            <tr>
+                                <th>Shape (N × D)</th>
+                                <th>Pure Silicon (cudaEvent)</th>
+                                <th>CUDA Graph Launch</th>
+                                <th>Host Wall-Clock</th>
+                                <th>Launch Overhead</th>
+                                <th>Cold L2 Cache</th>
+                                <th>PyTorch Native</th>
+                                <th>Silicon Speedup</th>
+                            </tr>
+                        </thead>
+                        <tbody id="diag-tbody">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+                <div class="badge badge-outline" id="diag-verdict" style="font-size: 0.75rem; width: 100%; justify-content: flex-start; padding: 0.6rem 0.85rem;">
+                    Diagnostic Ready.
+                </div>
+            </div>
+
+            <!-- Code Modal / Dropdown Area -->
+            <div class="card-content" id="submission-code-container" style="display: none; padding-top: 0;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <span class="badge badge-purple" id="submission-platform-badge">LeetGPU Standalone C++</span>
+                    <button class="btn btn-outline" id="btn-copy-code" style="height: 1.75rem; font-size: 0.75rem;">Copy to Clipboard</button>
+                </div>
+                <pre class="log-container" id="submission-code-pre" style="height: 280px; white-space: pre; overflow-x: auto; color: #e4e4e7; font-size: 0.75rem;"></pre>
+            </div>
+        </section>
+
         <!-- Lower Panels: Hall of Fame & Execution Log -->
         <section class="bottom-grid">
             <!-- Hall of Fame -->
