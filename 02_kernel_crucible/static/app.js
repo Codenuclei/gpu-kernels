@@ -266,15 +266,25 @@ function updateUI(data) {
         }
     }
 
-    // Saturation & Plateau Monitor
+    // Saturation & Plateau Monitor (50-Trial Window with Time-Decaying +/- 5% tolerance)
     if (saturationTag) {
-        const withoutAscension = data.rounds_without_ascension || 0;
+        const pt = data.plateau_telemetry;
         const isSaturated = !!data.saturation_detected;
         if (isSaturated) {
-            saturationTag.textContent = "PLATEAU: SATURATED (DISTILL READY)";
+            saturationTag.textContent = "PLATEAU: SATURATED (0/50 NEAR GOAL)";
             saturationTag.style.borderColor = "#ff0055";
             saturationTag.style.color = "#ff0055";
+        } else if (pt) {
+            saturationTag.textContent = `WINDOW: ${pt.trials_in_window}/${pt.window_size} | 8.8x GOAL (±${pt.current_tolerance_pct}%) | NEAR: ${pt.near_goal_count}`;
+            if (pt.near_goal_count > 0) {
+                saturationTag.style.borderColor = "#00ff66";
+                saturationTag.style.color = "#00ff66";
+            } else {
+                saturationTag.style.borderColor = "#ffd700";
+                saturationTag.style.color = "#ffd700";
+            }
         } else {
+            const withoutAscension = data.rounds_without_ascension || 0;
             saturationTag.textContent = `PLATEAU: ${withoutAscension}/25`;
             saturationTag.style.borderColor = "#ffd700";
             saturationTag.style.color = "#ffd700";

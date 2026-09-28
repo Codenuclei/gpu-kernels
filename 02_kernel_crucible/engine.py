@@ -12,6 +12,7 @@ from kernel_gym_env import KernelOptimizationEnv
 from test_suites import WORKLOAD_TEMPLATES, generate_workload_cuda
 import patch_unsloth
 import auto_post_train
+from plateau_detector import PlateauDetector
 
 LLM_ENDPOINT = "http://127.0.0.1:34247/v1/chat/completions"
 
@@ -31,6 +32,16 @@ class KernelCrucibleEngine:
         self.saturation_detected = False
         
         init_lat = float(self.gym_env.champion_latency)
+        
+        # 50-Trial Window Plateau Detector with Time-Decaying +/- 5% Tolerance
+        self.plateau_detector = PlateauDetector(
+            window_size=50,
+            target_speedup=8.8,
+            target_us_goal=min(8.88, init_lat),
+            base_tolerance=0.05,
+            min_tolerance=0.015,
+            decay_half_life_seconds=180.0
+        )
         self.champion = {
             "id": "champ-gen0",
             "name": self.gym_env.champion_name,
@@ -115,8 +126,13 @@ class KernelCrucibleEngine:
             "achieved_at": time.strftime("%H:%M:%S")
         }]
         self.last_challenger = None
+        self.plateau_detector.reset_ascension(measured_base)
+        self.saturation_detected = False
         self.event_log.insert(0, f"🌐 Switched Arena Workload to: {w_cfg['name']} (Baseline: {measured_base:.2f} µs)!")
         return True
+
+    def get_plateau_telemetry(self):
+        return self.plateau_detector.get_telemetry(self.gym_env.target_baseline_us)
 
     def get_gpu_telemetry(self):
         temp, power = self.gym_env._get_telemetry()
@@ -267,6 +283,7 @@ Reply ONLY in JSON:
                 print(f"Unsloth hot-swap error: {e}")
             self.rounds_without_ascension = 0
             self.saturation_detected = False
+            self.plateau_detector.reset_ascension(info["latency_us"])
         elif info["status"] == "DEFEATED":
             self.champion["defeated_count"] += 1
             self.rounds_without_ascension += 1
@@ -275,13 +292,21 @@ Reply ONLY in JSON:
             self.rounds_without_ascension += 1
             self.event_log.insert(0, f"💀 [GYM STEP {self.round_num}] SLAIN. Reward: {reward:.1f} | {challenger['name']} ({info['reason']})")
 
-        # Check Saturation Plateau
-        if self.rounds_without_ascension >= self.saturation_patience and not self.saturation_detected:
+        # Register trial in 50-output window & check decaying plateau
+        plateau_triggered = self.plateau_detector.register_trial({
+            "name": challenger["name"],
+            "latency_us": challenger["latency_us"],
+            "status": challenger["status"]
+        }, self.gym_env.target_baseline_us)
+
+        # Check Saturation Plateau (50 trials far from goal or patience limit)
+        if (plateau_triggered or self.rounds_without_ascension >= self.saturation_patience) and not self.saturation_detected:
             self.saturation_detected = True
+            p_telem = self.plateau_detector.get_telemetry(self.gym_env.target_baseline_us)
+            self.event_log.insert(0, f"🎓 [PLATEAU DETECTED] Across {p_telem['trials_in_window']} trials, 0 reached near {p_telem['target_speedup_mark']} goal ({p_telem['target_us_goal']:.2f} µs ±{p_telem['current_tolerance_pct']:.1f}%). Distilling Silicon Gold into serving model!")
             try:
                 auto_post_train.export_gold_dataset(self.hall_of_fame)
                 auto_post_train.run_unsloth_sft()
-                self.event_log.insert(0, f"🎓 [SATURATION REACHED] {self.rounds_without_ascension} rounds with 0 improvements! Distilled Silicon Gold into serving model weights!")
             except Exception as e:
                 print(f"Auto post-training trigger error: {e}")
             
@@ -310,6 +335,17 @@ Reply ONLY in JSON:
         best = grpo_summary["best_candidate"]
         self.last_grpo_cohort = cohort
         
+        # Register all candidates in the 50-output trial window
+        plateau_triggered = False
+        for c in cohort:
+            cand_trial = {
+                "name": c.get("name", "mutant"),
+                "latency_us": c.get("latency_us", 9999.0),
+                "status": "VALID" if c.get("latency_us", 9999.0) < 9000.0 else "ERROR"
+            }
+            if self.plateau_detector.register_trial(cand_trial, self.gym_env.target_baseline_us):
+                plateau_triggered = True
+
         # Check if the best candidate beats the reigning champion
         if best["latency_us"] < self.champion["latency_us"]:
             status = "ASCENDED"
@@ -371,6 +407,7 @@ Reply ONLY in JSON:
                 print(f"Unsloth hot-swap error: {e}")
             self.rounds_without_ascension = 0
             self.saturation_detected = False
+            self.plateau_detector.reset_ascension(best["latency_us"])
 
         else:
             status = "DEFEATED"
@@ -394,13 +431,14 @@ Reply ONLY in JSON:
             self.rounds_without_ascension += 1
             self.event_log.insert(0, f"⚔️ [RLVR GRPO] G=4 Cohort completed. Best: {best['name']} ({best['latency_us']:.2f} µs, Adv: {best['grpo_advantage']:+.2f})")
 
-            # Check Saturation Plateau
-            if self.rounds_without_ascension >= self.saturation_patience and not self.saturation_detected:
+            # Check Saturation Plateau (50 trials far from goal or patience limit)
+            if (plateau_triggered or self.rounds_without_ascension >= self.saturation_patience) and not self.saturation_detected:
                 self.saturation_detected = True
+                p_telem = self.plateau_detector.get_telemetry(self.gym_env.target_baseline_us)
+                self.event_log.insert(0, f"🎓 [PLATEAU DETECTED] Across {p_telem['trials_in_window']} trials, 0 reached near {p_telem['target_speedup_mark']} goal ({p_telem['target_us_goal']:.2f} µs ±{p_telem['current_tolerance_pct']:.1f}%). Distilling Silicon Gold into serving model!")
                 try:
                     auto_post_train.export_gold_dataset(self.hall_of_fame)
                     auto_post_train.run_unsloth_sft()
-                    self.event_log.insert(0, f"🎓 [SATURATION REACHED] {self.rounds_without_ascension} rounds with 0 improvements! Distilled Silicon Gold into serving model weights!")
                 except Exception as e:
                     print(f"Auto post-training trigger error: {e}")
             

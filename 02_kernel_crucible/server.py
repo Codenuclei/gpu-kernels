@@ -43,7 +43,8 @@ def build_status_payload():
         "baseline_latency_us": engine.gym_env.target_baseline_us,
         "unsloth_patched": patch_unsloth.is_patched(),
         "saturation_detected": getattr(engine, "saturation_detected", False),
-        "rounds_without_ascension": getattr(engine, "rounds_without_ascension", 0)
+        "rounds_without_ascension": getattr(engine, "rounds_without_ascension", 0),
+        "plateau_telemetry": engine.get_plateau_telemetry()
     }
 
 class CrucibleHandler(SimpleHTTPRequestHandler):
