@@ -25,15 +25,15 @@ LIB_PATH = os.path.join(BASE_DIR, "crucible_ops.so")
 # ---------------------------------------------------------------------------
 
 _CRUCIBLE_LIB = None
+AUTO_HOTSWAP = True
 
-def get_crucible_lib():
+def get_crucible_lib(force_reload=False):
     """Compiles (if needed) and loads the bare-metal crucible CUDA library."""
     global _CRUCIBLE_LIB
-    if _CRUCIBLE_LIB is not None:
+    if _CRUCIBLE_LIB is not None and not force_reload:
         return _CRUCIBLE_LIB
 
-    if not os.path.exists(LIB_PATH) or os.path.getmtime(CUDA_SRC) > os.path.getmtime(LIB_PATH):
-        print(f"[Crucible] Compiling {CUDA_SRC} into {LIB_PATH} with nvcc (SM 86)...")
+    if not os.path.exists(LIB_PATH) or os.path.getmtime(CUDA_SRC) > os.path.getmtime(LIB_PATH) or force_reload:
         cmd = [
             "nvcc", "-O3", "--use_fast_math", "-arch=sm_86",
             "-shared", "-Xcompiler", "-fPIC",
@@ -42,7 +42,6 @@ def get_crucible_lib():
         res = subprocess.run(cmd, capture_output=True, text=True)
         if res.returncode != 0:
             raise RuntimeError(f"NVCC Compilation failed:\n{res.stderr}")
-        print("[Crucible] Compilation successful!")
 
     lib = ctypes.CDLL(LIB_PATH)
     
@@ -61,6 +60,47 @@ def get_crucible_lib():
 
     _CRUCIBLE_LIB = lib
     return _CRUCIBLE_LIB
+
+def hot_swap_champion(unroll=8, cache_streaming=0, ptx_mode=1, maxreg=0, champion_name="Champion"):
+    """
+    Auto-replaces and hot-swaps the newly crowned champion kernel into Unsloth & PyTorch runtime.
+    Called automatically whenever an agent mutant defeats the reigning champion on bare silicon.
+    """
+    global _CRUCIBLE_LIB
+    import time
+    print(f"\n⚡ [Crucible Hot-Swap] Outperformed! Auto-compiling champion '{champion_name}' for Unsloth...")
+    print(f"   Architecture parameters: UNROLL={unroll} | CACHE_STREAM={cache_streaming} | PTX_FMA={ptx_mode}")
+    
+    cmd = [
+        "nvcc", "-O3", "--use_fast_math", "-arch=sm_86",
+        "-shared", "-Xcompiler", "-fPIC",
+        f"-DCHAMP_UNROLL={unroll}",
+        f"-DCHAMP_CACHE_STREAM={cache_streaming}",
+        f"-DCHAMP_PTX_MODE={ptx_mode}",
+        "-o", LIB_PATH, CUDA_SRC
+    ]
+    if maxreg > 0:
+        cmd.insert(4, f"-maxrregcount={maxreg}")
+
+    t0 = time.time()
+    res = subprocess.run(cmd, capture_output=True, text=True)
+    if res.returncode != 0:
+        print(f"❌ [Hot-Swap Error] Compilation failed:\n{res.stderr}")
+        return False
+
+    comp_time = (time.time() - t0) * 1000.0
+
+    # Reload dynamic C-library
+    _CRUCIBLE_LIB = None
+    _ = get_crucible_lib(force_reload=False)
+
+    # Automatically patch Unsloth & PyTorch if not yet patched
+    if not is_patched():
+        patch_unsloth()
+
+    print(f"👑 [Hot-Swap Deployed] '{champion_name}' compiled in {comp_time:.0f} ms & actively powering Unsloth & PyTorch!\n")
+    return True
+
 
 # ---------------------------------------------------------------------------
 # 2. Bare-Metal Kernel Wrappers

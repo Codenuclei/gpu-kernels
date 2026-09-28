@@ -311,12 +311,45 @@ extern "C" __global__ void split_kv_stage1_kernel(
     float m_prev = -1e30f;
     float l_prev = 0.0f;
 
+#ifndef CHAMP_UNROLL
+#define CHAMP_UNROLL 8
+#endif
+
+#ifndef CHAMP_CACHE_STREAM
+#define CHAMP_CACHE_STREAM 0
+#endif
+
+#ifndef CHAMP_PTX_MODE
+#define CHAMP_PTX_MODE 1
+#endif
+
+#if CHAMP_UNROLL == 8
+    #pragma unroll 8
+#elif CHAMP_UNROLL == 4
+    #pragma unroll 4
+#elif CHAMP_UNROLL == 2
+    #pragma unroll 2
+#else
+    #pragma unroll 1
+#endif
     for (int t = token_start; t < token_end; t++) {
         float dot = 0.0f;
         #pragma unroll
         for (int e = 0; e < elems; e++) {
-            float k_val = __half2float(K[t * head_dim + lane + e * WARP_SIZE]);
+            float k_val;
+#if CHAMP_CACHE_STREAM == 1
+            unsigned short raw_k;
+            asm("ld.global.cs.u16 %0, [%1];" : "=h"(raw_k) : "l"(&K[t * head_dim + lane + e * WARP_SIZE]));
+            k_val = __half2float(*((__half*)&raw_k));
+#else
+            k_val = __half2float(K[t * head_dim + lane + e * WARP_SIZE]);
+#endif
+
+#if CHAMP_PTX_MODE == 1
+            asm("fma.rn.f32 %0, %1, %2, %3;" : "=f"(dot) : "f"(q_reg[e]), "f"(k_val), "f"(dot));
+#else
             dot += q_reg[e] * k_val;
+#endif
         }
 
         dot = warp_reduce_sum(dot);
@@ -329,8 +362,22 @@ extern "C" __global__ void split_kv_stage1_kernel(
 
         #pragma unroll
         for (int e = 0; e < elems; e++) {
-            float v_val = __half2float(V[t * head_dim + lane + e * WARP_SIZE]);
+            float v_val;
+#if CHAMP_CACHE_STREAM == 1
+            unsigned short raw_v;
+            asm("ld.global.cs.u16 %0, [%1];" : "=h"(raw_v) : "l"(&V[t * head_dim + lane + e * WARP_SIZE]));
+            v_val = __half2float(*((__half*)&raw_v));
+#else
+            v_val = __half2float(V[t * head_dim + lane + e * WARP_SIZE]);
+#endif
+
+#if CHAMP_PTX_MODE == 1
+            float o_scaled;
+            asm("fma.rn.f32 %0, %1, %2, 0.0;" : "=f"(o_scaled) : "f"(o_acc[e]), "f"(alpha));
+            asm("fma.rn.f32 %0, %1, %2, %3;" : "=f"(o_acc[e]) : "f"(p), "f"(v_val), "f"(o_scaled));
+#else
             o_acc[e] = o_acc[e] * alpha + p * v_val;
+#endif
         }
 
         m_prev = m_curr;

@@ -10,6 +10,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(BASE_DIR)
 from kernel_gym_env import KernelOptimizationEnv
 from test_suites import WORKLOAD_TEMPLATES, generate_workload_cuda
+import patch_unsloth
 
 LLM_ENDPOINT = "http://127.0.0.1:34247/v1/chat/completions"
 
@@ -224,6 +225,19 @@ Reply ONLY in JSON:
                 "achieved_at": time.strftime("%H:%M:%S")
             })
             self.event_log.insert(0, f"👑 [GYM STEP {self.round_num}] ASCENSION! Reward: +{reward:.1f} | {challenger['name']} defeated {old_name} ({info['latency_us']:.2f} µs)!")
+            
+            # Auto-replace in Unsloth & PyTorch runtime
+            try:
+                patch_unsloth.hot_swap_champion(
+                    unroll=unroll_val,
+                    cache_streaming=cs_val,
+                    ptx_mode=ptx_val,
+                    maxreg=reg_val,
+                    champion_name=challenger["name"]
+                )
+                self.event_log.insert(0, f"🦥 [UNSLOTH AUTO-SWAP] Re-compiled & hot-swapped {challenger['name']} ({info['latency_us']:.2f} µs) directly into Unsloth!")
+            except Exception as e:
+                print(f"Unsloth hot-swap error: {e}")
         elif info["status"] == "DEFEATED":
             self.champion["defeated_count"] += 1
             self.event_log.insert(0, f"⚔️ [GYM STEP {self.round_num}] DEFEATED. Reward: {reward:.1f} | {challenger['name']} ({info['latency_us']:.2f} µs)")
@@ -298,6 +312,19 @@ Reply ONLY in JSON:
                 "achieved_at": time.strftime("%H:%M:%S")
             })
             self.event_log.insert(0, f"👑 [RLVR GRPO] ASCENSION! {best['name']} crowned! Latency: {best['latency_us']:.2f} µs (Adv: {best['grpo_advantage']:+.2f})")
+            
+            # Auto-replace in Unsloth & PyTorch runtime
+            try:
+                patch_unsloth.hot_swap_champion(
+                    unroll=best["unroll"],
+                    cache_streaming=best["cache_streaming"],
+                    ptx_mode=best["ptx_fma_mode"],
+                    champion_name=challenger["name"]
+                )
+                self.event_log.insert(0, f"🦥 [UNSLOTH AUTO-SWAP] Re-compiled & hot-swapped GRPO Victor {challenger['name']} ({best['latency_us']:.2f} µs) directly into Unsloth!")
+            except Exception as e:
+                print(f"Unsloth hot-swap error: {e}")
+
         else:
             status = "DEFEATED"
             lag = best["latency_us"] - self.champion["latency_us"]
