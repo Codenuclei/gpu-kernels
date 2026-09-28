@@ -9,14 +9,15 @@
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;800&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div class="stars"></div>
+    <!-- ReactBits Canvas Particles Background -->
+    <canvas id="particles-canvas" class="particles-bg"></canvas>
     <div class="grid-overlay"></div>
 
     <header class="app-header">
         <div class="brand">
             <span class="glitch-icon">⚡</span>
             <div>
-                <h1 class="brand-title">KERNEL CRUCIBLE</h1>
+                <h1 class="brand-title shiny-text">KERNEL CRUCIBLE</h1>
                 <p class="brand-subtitle">AUTONOMOUS SILICON EVOLUTION // RTX 2050 AMPERE</p>
             </div>
         </div>
@@ -42,12 +43,16 @@
                 <span class="label">UNSLOTH RUNTIME</span>
                 <span class="val purple" id="unsloth-header-badge">Online (Port 8888)</span>
             </div>
+            <div class="badge-item" style="border-color: rgba(0, 240, 255, 0.3);">
+                <span class="label">MICRO-INTERACTIONS</span>
+                <span class="val cyan">✨ ReactBits.dev</span>
+            </div>
         </div>
     </header>
 
     <main class="arena-layout">
         <!-- TOP CONTROL BAR -->
-        <section class="control-panel glass-card">
+        <section class="control-panel glass-card spotlight-card">
             <div class="panel-left">
                 <button class="btn btn-primary" id="btn-step">⚔️ RUN ARENA MATCH</button>
                 <button class="btn btn-grpo" id="btn-grpo">🧬 RLVR / GRPO BATTLE (G=4)</button>
@@ -82,7 +87,7 @@
         </section>
 
         <!-- UNSLOTH DROP-IN MONKEY PATCH BANNER -->
-        <section class="unsloth-panel glass-card">
+        <section class="unsloth-panel glass-card spotlight-card">
             <div class="unsloth-info">
                 <div class="unsloth-title-row">
                     <span class="unsloth-logo">🦥</span>
@@ -103,8 +108,8 @@
 
         <!-- CENTER RING: CHAMPION VS CHALLENGER -->
         <section class="coliseum-ring">
-            <!-- REIGNING CHAMPION CARD -->
-            <div class="combatant-card champion-card glass-card">
+            <!-- REIGNING CHAMPION CARD (With ReactBits Laser Border & Spotlight) -->
+            <div class="combatant-card champion-card glass-card spotlight-card laser-border">
                 <div class="card-crown">👑 REIGNING CHAMPION</div>
                 <h2 class="combatant-name gold" id="champ-name">SplitKV-Base-Champion</h2>
                 <div class="combatant-meta">
@@ -134,8 +139,8 @@
                 <div class="status-orb" id="status-orb">READY</div>
             </div>
 
-            <!-- CHALLENGER CARD -->
-            <div class="combatant-card challenger-card glass-card" id="challenger-box">
+            <!-- CHALLENGER CARD (With ReactBits Spotlight) -->
+            <div class="combatant-card challenger-card glass-card spotlight-card" id="challenger-box">
                 <div class="card-header-challenger">
                     <span id="challenger-badge" class="badge">CHALLENGER MUTANT</span>
                     <span id="outcome-badge" class="badge-outcome">WAITING</span>
@@ -160,7 +165,7 @@
         </section>
 
         <!-- RLVR / GRPO COHORT GRID -->
-        <section class="grpo-cohort-section glass-card" id="grpo-cohort-panel" style="display: none;">
+        <section class="grpo-cohort-section glass-card spotlight-card" id="grpo-cohort-panel" style="display: none;">
             <div class="cohort-header">
                 <h3 class="section-title">🧬 RLVR / GRPO COHORT BATTLE (G=4 BARE-METAL RACERS)</h3>
                 <span class="badge purple">Group Relative Advantage Normalized</span>
@@ -171,7 +176,7 @@
         </section>
 
         <!-- LATENCY COMPARISON RACE -->
-        <section class="race-bar-section glass-card">
+        <section class="race-bar-section glass-card spotlight-card">
             <h3 class="section-title">⚡ REAL-TIME LATENCY RACE (LOWER IS FASTER)</h3>
             <div class="race-track">
                 <!-- UNOPTIMIZED BASELINE -->
@@ -208,7 +213,7 @@
         <!-- BOTTOM PANELS: HALL OF FAME & COMBAT LOG -->
         <section class="bottom-grid">
             <!-- HALL OF FAME -->
-            <div class="glass-card hof-panel">
+            <div class="glass-card hof-panel spotlight-card">
                 <h3 class="section-title">🏆 HALL OF FAME // ASCENDED MUTANTS</h3>
                 <table class="hof-table">
                     <thead>
@@ -233,7 +238,7 @@
             </div>
 
             <!-- LIVE SILICON COMBAT LOG -->
-            <div class="glass-card log-panel">
+            <div class="glass-card log-panel spotlight-card">
                 <h3 class="section-title">📜 LIVE SILICON COMBAT LOG</h3>
                 <div class="log-stream" id="log-stream">
                     <div class="log-line green">🔥 Kernel Crucible initialized. GPU clocks locked to P0 1747 MHz.</div>

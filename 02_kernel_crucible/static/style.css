@@ -689,3 +689,118 @@ body {
     box-shadow: 0 0 25px rgba(255, 51, 102, 0.45);
 }
 
+/* ==========================================================================
+   REACTBITS MICRO-INTERACTIONS & EFFECTS (https://reactbits.dev)
+   ========================================================================== */
+
+/* 1. ReactBits Particles Background Canvas */
+.particles-bg {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    pointer-events: none;
+    z-index: 1;
+    opacity: 0.75;
+}
+
+/* 2. ReactBits Spotlight Card Effect (Interactive Cursor Lighting) */
+.spotlight-card {
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease;
+}
+
+.spotlight-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(
+        450px circle at var(--mouse-x, -500px) var(--mouse-y, -500px),
+        rgba(0, 240, 255, 0.12),
+        transparent 80%
+    );
+    pointer-events: none;
+    z-index: 2;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.spotlight-card:hover::before {
+    opacity: 1;
+}
+
+.spotlight-card:hover {
+    box-shadow: 0 12px 40px rgba(0, 240, 255, 0.15);
+}
+
+/* 3. ReactBits Circulating Laser Border for Champion */
+.laser-border {
+    position: relative;
+    border: 1px solid rgba(255, 215, 0, 0.35);
+}
+
+.laser-border::after {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    padding: 1px;
+    background: conic-gradient(
+        from var(--laser-angle, 0deg),
+        transparent 65%,
+        var(--neon-gold) 88%,
+        var(--neon-cyan) 100%
+    );
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    animation: rotateLaser 3.5s linear infinite;
+    z-index: 3;
+}
+
+@property --laser-angle {
+    syntax: '<angle>';
+    initial-value: 0deg;
+    inherits: false;
+}
+
+@keyframes rotateLaser {
+    to {
+        --laser-angle: 360deg;
+    }
+}
+
+/* 4. ReactBits Shiny / Shimmer Text Effect */
+.shiny-text {
+    background: linear-gradient(
+        120deg,
+        rgba(0, 240, 255, 0.8) 0%,
+        rgba(255, 255, 255, 1) 45%,
+        rgba(181, 55, 242, 0.9) 70%,
+        rgba(0, 240, 255, 0.8) 100%
+    );
+    background-size: 250% 100%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: shinyTextSweep 4s infinite linear;
+}
+
+@keyframes shinyTextSweep {
+    0% { background-position: 250% 0; }
+    100% { background-position: -150% 0; }
+}
+
+/* 5. Decrypted Text Glitch Glow */
+.decrypted-active {
+    color: var(--neon-cyan) !important;
+    text-shadow: 0 0 12px var(--neon-cyan) !important;
+    font-family: 'JetBrains Mono', monospace !important;
+}
+
+

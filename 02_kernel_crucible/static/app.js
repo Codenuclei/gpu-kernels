@@ -59,6 +59,174 @@ const hofTbody = document.getElementById('hof-tbody');
 const logStream = document.getElementById('log-stream');
 const workloadSelect = document.getElementById('workload-select');
 
+// Track state for animations
+let prevChampName = "";
+let prevChallengerName = "";
+let prevChampLat = 0;
+let prevChallengerLat = 0;
+
+/* ==========================================================================
+   REACTBITS MICRO-INTERACTION ENGINES (https://reactbits.dev)
+   ========================================================================== */
+
+// 1. ReactBits DecryptedText Engine
+const GLYPHS = "!@#$%^&*()_+-=<>?/\\[]{}0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+function scrambleDecryptedText(element, finalStr, duration = 400) {
+    if (!element || !finalStr || element.textContent === finalStr) return;
+    element.classList.add("decrypted-active");
+    const startTime = performance.now();
+    const length = finalStr.length;
+
+    function frame(now) {
+        const elapsed = now - startTime;
+        const progress = Math.min(1, elapsed / duration);
+        const resolvedChars = Math.floor(progress * length);
+
+        let result = "";
+        for (let i = 0; i < length; i++) {
+            if (i < resolvedChars) {
+                result += finalStr[i];
+            } else {
+                result += GLYPHS[Math.floor(Math.random() * GLYPHS.length)];
+            }
+        }
+        element.textContent = result;
+
+        if (progress < 1) {
+            requestAnimationFrame(frame);
+        } else {
+            element.textContent = finalStr;
+            element.classList.remove("decrypted-active");
+        }
+    }
+    requestAnimationFrame(frame);
+}
+
+// 2. ReactBits NumberTicker / CountUp Engine
+function animateNumber(element, start, end, decimals = 2, suffix = "") {
+    if (!element || start === end) {
+        if (element) element.innerHTML = `${end.toFixed(decimals)} <small>${suffix}</small>`;
+        return;
+    }
+    const startTime = performance.now();
+    const duration = 450;
+
+    function step(now) {
+        const progress = Math.min(1, (now - startTime) / duration);
+        const ease = 1 - Math.pow(1 - progress, 3); // Ease-out cubic
+        const current = start + (end - start) * ease;
+        element.innerHTML = `${current.toFixed(decimals)} <small>${suffix}</small>`;
+
+        if (progress < 1) {
+            requestAnimationFrame(step);
+        } else {
+            element.innerHTML = `${end.toFixed(decimals)} <small>${suffix}</small>`;
+        }
+    }
+    requestAnimationFrame(step);
+}
+
+// 3. ReactBits Spotlight Card Tracker
+function initReactBitsSpotlight() {
+    document.querySelectorAll('.spotlight-card').forEach(card => {
+        card.addEventListener('mousemove', (e) => {
+            const rect = card.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            card.style.setProperty('--mouse-x', `${x}px`);
+            card.style.setProperty('--mouse-y', `${y}px`);
+        });
+    });
+}
+
+// 4. ReactBits Interactive Canvas Particles Engine
+function initReactBitsParticles() {
+    const canvas = document.getElementById('particles-canvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    let width = canvas.width = window.innerWidth;
+    let height = canvas.height = window.innerHeight;
+
+    window.addEventListener('resize', () => {
+        width = canvas.width = window.innerWidth;
+        height = canvas.height = window.innerHeight;
+    });
+
+    const particles = [];
+    const count = 45;
+    for (let i = 0; i < count; i++) {
+        particles.push({
+            x: Math.random() * width,
+            y: Math.random() * height,
+            vx: (Math.random() - 0.5) * 0.4,
+            vy: (Math.random() - 0.5) * 0.4,
+            radius: Math.random() * 1.5 + 1
+        });
+    }
+
+    let mouseX = -1000, mouseY = -1000;
+    window.addEventListener('mousemove', (e) => {
+        mouseX = e.clientX;
+        mouseY = e.clientY;
+    });
+
+    function loop() {
+        ctx.clearRect(0, 0, width, height);
+
+        for (let i = 0; i < particles.length; i++) {
+            const p = particles[i];
+            p.x += p.vx;
+            p.y += p.vy;
+
+            if (p.x < 0) p.x = width;
+            if (p.x > width) p.x = 0;
+            if (p.y < 0) p.y = height;
+            if (p.y > height) p.y = 0;
+
+            // Draw particle
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+            ctx.fillStyle = "rgba(0, 240, 255, 0.4)";
+            ctx.fill();
+
+            // Connect nearby particles
+            for (let j = i + 1; j < particles.length; j++) {
+                const p2 = particles[j];
+                const dx = p.x - p2.x;
+                const dy = p.y - p2.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist < 110) {
+                    ctx.beginPath();
+                    ctx.moveTo(p.x, p.y);
+                    ctx.lineTo(p2.x, p2.y);
+                    ctx.strokeStyle = `rgba(0, 240, 255, ${0.15 * (1 - dist / 110)})`;
+                    ctx.lineWidth = 0.6;
+                    ctx.stroke();
+                }
+            }
+
+            // Connect to mouse
+            const mdx = p.x - mouseX;
+            const mdy = p.y - mouseY;
+            const mdist = Math.sqrt(mdx * mdx + mdy * mdy);
+            if (mdist < 140) {
+                ctx.beginPath();
+                ctx.moveTo(p.x, p.y);
+                ctx.lineTo(mouseX, mouseY);
+                ctx.strokeStyle = `rgba(181, 55, 242, ${0.25 * (1 - mdist / 140)})`;
+                ctx.lineWidth = 0.8;
+                ctx.stroke();
+            }
+        }
+        requestAnimationFrame(loop);
+    }
+    requestAnimationFrame(loop);
+}
+
+/* ==========================================================================
+   UI DATA BINDING & UPDATER
+   ========================================================================== */
+
 function updateUI(data) {
     if (!data) return;
 
@@ -99,11 +267,21 @@ function updateUI(data) {
     // 3. Champion Card & Metrics
     if (data.champion) {
         const c = data.champion;
-        if (champName) champName.textContent = c.name;
+        if (champName) {
+            if (c.name !== prevChampName) {
+                scrambleDecryptedText(champName, c.name, 450);
+                prevChampName = c.name;
+            }
+        }
         if (champAuthor) champAuthor.textContent = c.author;
         if (champGens) champGens.textContent = c.generation;
         if (champKills) champKills.textContent = c.defeated_count;
-        if (champLatency) champLatency.innerHTML = `${c.latency_us.toFixed(2)} <small>µs</small>`;
+
+        if (champLatency) {
+            animateNumber(champLatency, prevChampLat || c.latency_us, c.latency_us, 2, "µs");
+            prevChampLat = c.latency_us;
+        }
+
         if (champRegs) champRegs.textContent = c.registers;
         if (champUnroll) champUnroll.textContent = `x${c.unroll}`;
         if (champCs) champCs.textContent = c.cache_streaming ? "Enabled (ld.global.cs)" : "Standard";
@@ -139,11 +317,25 @@ function updateUI(data) {
     // 4. Challenger Card & Metrics
     if (data.challenger) {
         const ch = data.challenger;
-        if (challengerName) challengerName.textContent = ch.name;
+        if (challengerName) {
+            if (ch.name !== prevChallengerName) {
+                scrambleDecryptedText(challengerName, ch.name, 400);
+                prevChallengerName = ch.name;
+            }
+        }
         if (challengerStrategy) challengerStrategy.textContent = ch.strategy;
         if (challengerCompile) challengerCompile.textContent = `${ch.compile_time_ms.toFixed(0)} ms`;
         if (challengerRegs) challengerRegs.textContent = ch.registers;
-        if (challengerLatency) challengerLatency.innerHTML = `${ch.latency_us.toFixed(2)} <small>µs</small>`;
+        
+        if (challengerLatency) {
+            if (ch.latency_us < 990) {
+                animateNumber(challengerLatency, prevChallengerLat || ch.latency_us, ch.latency_us, 2, "µs");
+                prevChallengerLat = ch.latency_us;
+            } else {
+                challengerLatency.innerHTML = `CRASH <small>µs</small>`;
+            }
+        }
+
         if (decisionText) decisionText.textContent = ch.reason;
 
         if (outcomeBadge && challengerDelta && statusOrb) {
@@ -206,7 +398,7 @@ function updateUI(data) {
                 const isWin = (c.grpo_advantage === bestAdv);
                 const advClass = (c.grpo_advantage >= 0) ? 'green' : 'red';
                 return `
-                    <div class="cohort-card ${isWin ? 'winner' : ''}">
+                    <div class="cohort-card spotlight-card ${isWin ? 'winner laser-border' : ''}">
                         <div class="cohort-card-title ${isWin ? 'gold' : 'cyan'}">
                             ${c.name} ${isWin ? '👑 (VICTOR)' : ''}
                         </div>
@@ -225,6 +417,7 @@ function updateUI(data) {
                     </div>
                 `;
             }).join('');
+            initReactBitsSpotlight();
         }
     }
 
@@ -258,7 +451,10 @@ function updateUI(data) {
     }
 }
 
-// Initial Fetch
+// Initial Bootstrapping
+initReactBitsSpotlight();
+initReactBitsParticles();
+
 fetch('/api/status')
     .then(r => r.json())
     .then(updateUI)
