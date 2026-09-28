@@ -50,9 +50,11 @@ extern "C" __global__ void split_kv_gym_kernel(
     float q_val_0 = __half2float(Q[lane]);
     float q_val_1 = __half2float(Q[lane + 32]);
     
-    float local_scores[CHUNK_SIZE];
-    float chunk_max = -1e20f;
-    float scale = 0.125f;
+    float o_acc0 = 0.0f;
+    float o_acc1 = 0.0f;
+    float m_prev = -1e20f;
+    float l_prev = 0.0f;
+    const float scale = 0.125f;
     
     #pragma unroll __UNROLL__
     for (int i = 0; i < CHUNK_SIZE; i++) {
@@ -75,40 +77,35 @@ extern "C" __global__ void split_kv_gym_kernel(
 #else
         dot = q_val_0 * k0 + q_val_1 * k1;
 #endif
-        dot = warp_reduce_sum(dot) * scale;
-        local_scores[i] = dot;
-        if (dot > chunk_max) chunk_max = dot;
-    }
-    
-    float chunk_sum = 0.0f;
-    #pragma unroll __UNROLL__
-    for (int i = 0; i < CHUNK_SIZE; i++) {
-        float p = fast_exp(local_scores[i] - chunk_max);
-        local_scores[i] = p;
-        chunk_sum += p;
-    }
-    
-    float acc_0 = 0.0f;
-    float acc_1 = 0.0f;
-    #pragma unroll __UNROLL__
-    for (int i = 0; i < CHUNK_SIZE; i++) {
-        float p = local_scores[i];
-        float v0 = __half2float(V[(token_start + i) * D + lane]);
-        float v1 = __half2float(V[(token_start + i) * D + lane + 32]);
+        dot = warp_reduce_sum(dot);
+        float score = __shfl_sync(0xffffffff, dot, 0) * scale;
+        
+        float m_curr = fmaxf(m_prev, score);
+        float alpha = fast_exp(m_prev - m_curr);
+        float p = fast_exp(score - m_curr);
+        float l_curr = l_prev * alpha + p;
+        
+        float v0 = __half2float(V[t * D + lane]);
+        float v1 = __half2float(V[t * D + lane + 32]);
 #if __PTX_MODE__ == 1
-        asm("fma.rn.f32 %0, %1, %2, %3;" : "=f"(acc_0) : "f"(p), "f"(v0), "f"(acc_0));
-        asm("fma.rn.f32 %0, %1, %2, %3;" : "=f"(acc_1) : "f"(p), "f"(v1), "f"(acc_1));
+        float o0_s, o1_s;
+        asm("fma.rn.f32 %0, %1, %2, 0.0;" : "=f"(o0_s) : "f"(o_acc0), "f"(alpha));
+        asm("fma.rn.f32 %0, %1, %2, %3;" : "=f"(o_acc0) : "f"(p), "f"(v0), "f"(o0_s));
+        asm("fma.rn.f32 %0, %1, %2, 0.0;" : "=f"(o1_s) : "f"(o_acc1), "f"(alpha));
+        asm("fma.rn.f32 %0, %1, %2, %3;" : "=f"(o_acc1) : "f"(p), "f"(v1), "f"(o1_s));
 #else
-        acc_0 += p * v0;
-        acc_1 += p * v1;
+        o_acc0 = o_acc0 * alpha + p * v0;
+        o_acc1 = o_acc1 * alpha + p * v1;
 #endif
+        m_prev = m_curr;
+        l_prev = l_curr;
     }
     
-    partial_out[chunk_id * D + lane] = acc_0;
-    partial_out[chunk_id * D + lane + 32] = acc_1;
+    partial_out[chunk_id * D + lane] = o_acc0;
+    partial_out[chunk_id * D + lane + 32] = o_acc1;
     if (lane == 0) {
-        partial_max[chunk_id] = chunk_max;
-        partial_sum[chunk_id] = chunk_sum;
+        partial_max[chunk_id] = m_prev;
+        partial_sum[chunk_id] = l_prev;
     }
 }
 
@@ -197,7 +194,7 @@ class KernelOptimizationEnv(gym.Env):
         self.max_steps_per_episode = 50
         
         # Current Champion state
-        self.champion_latency = 8.40  # Initial SplitKV baseline
+        self.champion_latency = 13.39  # Baseline Split-KV
         self.champion_action = [1, 0, 1, 0] # unroll=2, cs=0, ptx=1, reg=0
         self.champion_name = "SplitKV-Base-Champion"
         
