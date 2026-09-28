@@ -197,6 +197,35 @@ body {
     box-shadow: 0 0 20px rgba(181, 55, 242, 0.5);
 }
 
+.workload-picker {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(255, 255, 255, 0.04);
+    padding: 0.4rem 0.8rem;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.picker-label {
+    font-size: 0.65rem;
+    color: var(--neon-cyan);
+    font-weight: 700;
+    letter-spacing: 1px;
+}
+
+.picker-select {
+    background: #0d1117;
+    color: var(--text-main);
+    border: 1px solid var(--neon-cyan);
+    padding: 0.35rem 0.6rem;
+    border-radius: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    cursor: pointer;
+    outline: none;
+}
+
 .auto-indicator {
     display: flex;
     align-items: center;

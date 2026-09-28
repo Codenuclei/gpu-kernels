@@ -271,3 +271,20 @@ btnAuto.addEventListener('click', () => {
             });
     }
 });
+
+const workloadSelect = document.getElementById('workload-select');
+if (workloadSelect) {
+    workloadSelect.addEventListener('change', (e) => {
+        const selected = e.target.value;
+        statusOrb.textContent = "SWITCHING SCENARIO...";
+        fetch('/api/set_workload', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ workload: selected })
+        })
+        .then(r => r.json())
+        .then(() => {
+            fetch('/api/status').then(r => r.json()).then(updateUI);
+        });
+    });
+}

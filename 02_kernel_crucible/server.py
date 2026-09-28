@@ -10,6 +10,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(BASE_DIR)
 from engine import KernelCrucibleEngine
 from rlvr_grpo_engine import RLVREngine
+from test_suites import WORKLOAD_TEMPLATES
 
 engine = KernelCrucibleEngine()
 rlvr_engine = RLVREngine(group_size=4, baseline_latency_us=engine.gym_env.target_baseline_us)
@@ -76,6 +77,16 @@ class CrucibleHandler(SimpleHTTPRequestHandler):
                     time.sleep(1.0)
             except Exception:
                 pass
+        elif parsed.path == "/api/workloads":
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            data = {
+                "current": engine.current_workload,
+                "workloads": WORKLOAD_TEMPLATES
+            }
+            self.wfile.write(json.dumps(data).encode("utf-8"))
         else:
             super().do_GET()
 
@@ -93,6 +104,13 @@ class CrucibleHandler(SimpleHTTPRequestHandler):
         elif parsed.path == "/api/grpo_step":
             res = engine.step_grpo(rlvr_engine)
             self.wfile.write(json.dumps(res).encode("utf-8"))
+        elif parsed.path == "/api/set_workload":
+            content_length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(content_length).decode("utf-8") if content_length > 0 else "{}"
+            req = json.loads(body)
+            w_key = req.get("workload", "split_kv_d64")
+            engine.set_workload(w_key)
+            self.wfile.write(json.dumps({"status": "workload_set", "workload": w_key}).encode("utf-8"))
         elif parsed.path == "/api/start_auto":
             if not auto_running:
                 auto_running = True

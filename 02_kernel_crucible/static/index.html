@@ -52,6 +52,15 @@
                 <button class="btn btn-primary" id="btn-step">⚔️ RUN ARENA MATCH</button>
                 <button class="btn btn-grpo" id="btn-grpo">🧬 RLVR / GRPO BATTLE (G=4)</button>
                 <button class="btn btn-secondary" id="btn-auto">⚡ AUTO-TOURNAMENT</button>
+                <div class="workload-picker">
+                    <span class="picker-label">ARENA SCENARIO:</span>
+                    <select id="workload-select" class="picker-select">
+                        <option value="split_kv_d64">⚡ LLM Decoding (N=1024, D=64)</option>
+                        <option value="prefill_long_n8k">🚀 Long Prefill (N=8192, D=64)</option>
+                        <option value="vision_head_d256">👁️ Vision High-Dim (N=1024, D=256)</option>
+                        <option value="numerical_stress">💥 Numerical Stress ([-500, +500])</option>
+                    </select>
+                </div>
                 <div class="auto-indicator" id="auto-indicator">
                     <span class="pulse-dot"></span> <span id="auto-status-text">MANUAL MODE</span>
                 </div>
