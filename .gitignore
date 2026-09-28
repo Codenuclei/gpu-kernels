@@ -3,3 +3,5 @@
 *.o
 *.out
 __pycache__/
+01_softmax/softmax_advanced
+01_softmax/softmax_warp
