@@ -437,14 +437,14 @@ function updateUI(data) {
     if (autoIndicator && autoStatusText && btnAuto) {
         if (isAuto) {
             autoIndicator.classList.add("auto-running");
-            autoStatusText.textContent = "AUTO-TOURNAMENT RUNNING";
-            btnAuto.textContent = "⏹️ PAUSE TOURNAMENT";
+            autoStatusText.textContent = "AUTO-RLVR RUNNING (G=4 PARALLEL)";
+            btnAuto.textContent = "⏹️ PAUSE AUTO-RLVR";
             btnAuto.style.background = "rgba(255, 51, 102, 0.3)";
             btnAuto.style.borderColor = "var(--neon-red)";
         } else {
             autoIndicator.classList.remove("auto-running");
             autoStatusText.textContent = "MANUAL MODE";
-            btnAuto.textContent = "⚡ START AUTO-TOURNAMENT";
+            btnAuto.textContent = "🧬 START AUTO-RLVR (G=4)";
             btnAuto.style.background = "rgba(181, 55, 242, 0.2)";
             btnAuto.style.borderColor = "var(--neon-purple)";
         }

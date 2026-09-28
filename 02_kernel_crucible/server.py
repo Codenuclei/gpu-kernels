@@ -22,10 +22,11 @@ def auto_loop():
     global auto_running
     while auto_running:
         try:
-            engine.step_arena()
-            time.sleep(1.5)
+            # Dedicated RLVR + GRPO Parallel Cohort Tournament (G=4 Slots Saturated)
+            engine.step_grpo(rlvr_engine)
+            time.sleep(1.0)
         except Exception as e:
-            print("Auto loop error:", e)
+            print("Auto RLVR loop error:", e)
             time.sleep(2)
 
 def build_status_payload():
