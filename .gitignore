@@ -9,3 +9,4 @@ __pycache__/
 01_softmax/peak_100x_softmax
 01_softmax/ten_x_multiplier
 01_softmax/breakthrough_10x
+01_softmax/verify_split_kv
