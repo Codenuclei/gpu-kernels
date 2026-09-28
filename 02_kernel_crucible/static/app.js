@@ -21,6 +21,8 @@ const statBaseline = document.getElementById('stat-baseline');
 const unslothHeaderBadge = document.getElementById('unsloth-header-badge');
 const unslothStatusTag = document.getElementById('unsloth-status-tag');
 const unslothSpeedupTag = document.getElementById('unsloth-speedup-tag');
+const saturationTag = document.getElementById('saturation-tag');
+const btnPostTrain = document.getElementById('btn-post-train');
 
 // Champion Elements
 const champName = document.getElementById('champ-name');
@@ -261,6 +263,21 @@ function updateUI(data) {
             unslothHeaderBadge.className = "val purple";
             btnUnslothToggle.textContent = "🦥 INJECT INTO UNSLOTH & PYTORCH";
             btnUnslothToggle.className = "btn btn-unsloth";
+        }
+    }
+
+    // Saturation & Plateau Monitor
+    if (saturationTag) {
+        const withoutAscension = data.rounds_without_ascension || 0;
+        const isSaturated = !!data.saturation_detected;
+        if (isSaturated) {
+            saturationTag.textContent = "PLATEAU: SATURATED (DISTILL READY)";
+            saturationTag.style.borderColor = "#ff0055";
+            saturationTag.style.color = "#ff0055";
+        } else {
+            saturationTag.textContent = `PLATEAU: ${withoutAscension}/25`;
+            saturationTag.style.borderColor = "#ffd700";
+            saturationTag.style.color = "#ffd700";
         }
     }
 
@@ -548,6 +565,28 @@ if (btnUnslothToggle) {
             .catch(err => {
                 console.error("Unsloth patch error:", err);
                 btnUnslothToggle.disabled = false;
+            });
+    });
+}
+
+if (btnPostTrain) {
+    btnPostTrain.addEventListener('click', () => {
+        btnPostTrain.disabled = true;
+        btnPostTrain.textContent = "🎓 DISTILLING SILICON GOLD...";
+        if (statusOrb) statusOrb.textContent = "DISTILLING SFT...";
+
+        fetch('/api/trigger_post_train', { method: 'POST' })
+            .then(r => r.json())
+            .then(data => {
+                btnPostTrain.disabled = false;
+                btnPostTrain.textContent = "🎓 DISTILL SILICON GOLD";
+                if (statusOrb) statusOrb.textContent = "SFT COMPLETE";
+                fetch('/api/status').then(r => r.json()).then(updateUI);
+            })
+            .catch(err => {
+                console.error("Post-train error:", err);
+                btnPostTrain.disabled = false;
+                btnPostTrain.textContent = "🎓 DISTILL SILICON GOLD";
             });
     });
 }

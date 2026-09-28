@@ -41,7 +41,9 @@ def build_status_payload():
         "log": engine.event_log[:20],
         "last_grpo_cohort": getattr(engine, "last_grpo_cohort", None),
         "baseline_latency_us": engine.gym_env.target_baseline_us,
-        "unsloth_patched": patch_unsloth.is_patched()
+        "unsloth_patched": patch_unsloth.is_patched(),
+        "saturation_detected": getattr(engine, "saturation_detected", False),
+        "rounds_without_ascension": getattr(engine, "rounds_without_ascension", 0)
     }
 
 class CrucibleHandler(SimpleHTTPRequestHandler):
@@ -129,6 +131,12 @@ class CrucibleHandler(SimpleHTTPRequestHandler):
         elif parsed.path == "/api/unsloth_unpatch":
             patch_unsloth.unpatch_unsloth()
             self.wfile.write(json.dumps({"status": "unpatched", "is_patched": False}).encode("utf-8"))
+        elif parsed.path == "/api/trigger_post_train":
+            import auto_post_train
+            dataset_path = auto_post_train.export_gold_dataset(engine.hall_of_fame)
+            success = auto_post_train.run_unsloth_sft(dataset_path)
+            engine.event_log.insert(0, "🎓 [POST-TRAIN] Distilled Hall of Fame into serving model weights!")
+            self.wfile.write(json.dumps({"status": "post_trained", "success": success}).encode("utf-8"))
         else:
             self.wfile.write(json.dumps({"error": "not_found"}).encode("utf-8"))
 

@@ -11,6 +11,7 @@ sys.path.append(BASE_DIR)
 from kernel_gym_env import KernelOptimizationEnv
 from test_suites import WORKLOAD_TEMPLATES, generate_workload_cuda
 import patch_unsloth
+import auto_post_train
 
 LLM_ENDPOINT = "http://127.0.0.1:34247/v1/chat/completions"
 
@@ -23,6 +24,11 @@ class KernelCrucibleEngine:
         self.generation = 0
         self.round_num = 0
         self.total_reward = 0.0
+        
+        # Saturation & Post-Training Monitor
+        self.rounds_without_ascension = 0
+        self.saturation_patience = 25
+        self.saturation_detected = False
         
         init_lat = float(self.gym_env.champion_latency)
         self.champion = {
@@ -259,11 +265,25 @@ Reply ONLY in JSON:
                 self.event_log.insert(0, f"🦥 [UNSLOTH AUTO-SWAP] Re-compiled & hot-swapped {challenger['name']} ({info['latency_us']:.2f} µs) directly into Unsloth!")
             except Exception as e:
                 print(f"Unsloth hot-swap error: {e}")
+            self.rounds_without_ascension = 0
+            self.saturation_detected = False
         elif info["status"] == "DEFEATED":
             self.champion["defeated_count"] += 1
+            self.rounds_without_ascension += 1
             self.event_log.insert(0, f"⚔️ [GYM STEP {self.round_num}] DEFEATED. Reward: {reward:.1f} | {challenger['name']} ({info['latency_us']:.2f} µs)")
         else:
+            self.rounds_without_ascension += 1
             self.event_log.insert(0, f"💀 [GYM STEP {self.round_num}] SLAIN. Reward: {reward:.1f} | {challenger['name']} ({info['reason']})")
+
+        # Check Saturation Plateau
+        if self.rounds_without_ascension >= self.saturation_patience and not self.saturation_detected:
+            self.saturation_detected = True
+            try:
+                auto_post_train.export_gold_dataset(self.hall_of_fame)
+                auto_post_train.run_unsloth_sft()
+                self.event_log.insert(0, f"🎓 [SATURATION REACHED] {self.rounds_without_ascension} rounds with 0 improvements! Distilled Silicon Gold into serving model weights!")
+            except Exception as e:
+                print(f"Auto post-training trigger error: {e}")
             
         return {
             "champion": self.champion,
@@ -349,6 +369,8 @@ Reply ONLY in JSON:
                 self.event_log.insert(0, f"🦥 [UNSLOTH AUTO-SWAP] Re-compiled & hot-swapped GRPO Victor {challenger['name']} ({best['latency_us']:.2f} µs) directly into Unsloth!")
             except Exception as e:
                 print(f"Unsloth hot-swap error: {e}")
+            self.rounds_without_ascension = 0
+            self.saturation_detected = False
 
         else:
             status = "DEFEATED"
@@ -369,7 +391,18 @@ Reply ONLY in JSON:
                 "reward": best["reward"]
             }
             self.champion["defeated_count"] += 1
+            self.rounds_without_ascension += 1
             self.event_log.insert(0, f"⚔️ [RLVR GRPO] G=4 Cohort completed. Best: {best['name']} ({best['latency_us']:.2f} µs, Adv: {best['grpo_advantage']:+.2f})")
+
+            # Check Saturation Plateau
+            if self.rounds_without_ascension >= self.saturation_patience and not self.saturation_detected:
+                self.saturation_detected = True
+                try:
+                    auto_post_train.export_gold_dataset(self.hall_of_fame)
+                    auto_post_train.run_unsloth_sft()
+                    self.event_log.insert(0, f"🎓 [SATURATION REACHED] {self.rounds_without_ascension} rounds with 0 improvements! Distilled Silicon Gold into serving model weights!")
+                except Exception as e:
+                    print(f"Auto post-training trigger error: {e}")
             
         self.last_challenger = challenger
         self.total_reward += best["reward"]
