@@ -472,6 +472,58 @@ body {
 .bar-champ { background: linear-gradient(90deg, #ffd700, #ffea70); color: #000; box-shadow: 0 0 15px rgba(255, 215, 0, 0.5); }
 .bar-challenger { background: linear-gradient(90deg, #00f0ff, #b537f2); color: #fff; }
 
+/* GRPO Cohort Grid */
+.grpo-cohort-section {
+    border-color: rgba(181, 55, 242, 0.4);
+    box-shadow: 0 0 25px rgba(181, 55, 242, 0.15);
+}
+
+.cohort-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.cohort-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+}
+
+.cohort-card {
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    padding: 0.9rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    transition: all 0.2s ease;
+}
+
+.cohort-card.winner {
+    border-color: var(--neon-gold);
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.3);
+    background: rgba(255, 215, 0, 0.04);
+}
+
+.cohort-card-title {
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+.cohort-card-meta {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+}
+
+.cohort-advantage {
+    font-size: 0.9rem;
+    font-weight: 800;
+    margin-top: 0.2rem;
+}
+
 /* Bottom Grid */
 .bottom-grid {
     display: grid;

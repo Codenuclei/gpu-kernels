@@ -45,7 +45,8 @@ class CrucibleHandler(SimpleHTTPRequestHandler):
                 "round_num": engine.round_num,
                 "generation": engine.generation,
                 "auto_running": auto_running,
-                "log": engine.event_log[:20]
+                "log": engine.event_log[:20],
+                "last_grpo_cohort": getattr(engine, "last_grpo_cohort", None)
             }
             self.wfile.write(json.dumps(data).encode("utf-8"))
         elif parsed.path == "/api/stream":
@@ -64,7 +65,8 @@ class CrucibleHandler(SimpleHTTPRequestHandler):
                         "round_num": engine.round_num,
                         "generation": engine.generation,
                         "auto_running": auto_running,
-                        "log": engine.event_log[:20]
+                        "log": engine.event_log[:20],
+                        "last_grpo_cohort": getattr(engine, "last_grpo_cohort", None)
                     }
                     msg = f"data: {json.dumps(data)}\n\n"
                     self.wfile.write(msg.encode("utf-8"))
@@ -87,7 +89,7 @@ class CrucibleHandler(SimpleHTTPRequestHandler):
             res = engine.step_arena()
             self.wfile.write(json.dumps(res).encode("utf-8"))
         elif parsed.path == "/api/grpo_step":
-            res = rlvr_engine.run_grpo_round()
+            res = engine.step_grpo(rlvr_engine)
             self.wfile.write(json.dumps(res).encode("utf-8"))
         elif parsed.path == "/api/start_auto":
             if not auto_running:

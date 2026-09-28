@@ -178,5 +178,98 @@ Reply ONLY in JSON:
             "round_num": self.round_num,
             "generation": self.generation,
             "total_reward": round(self.total_reward, 1),
-            "log": self.event_log[:15]
+            "log": self.event_log[:15],
+            "last_grpo_cohort": getattr(self, "last_grpo_cohort", None)
+        }
+
+    def step_grpo(self, rlvr_engine):
+        self.round_num += 1
+        self.generation += 1
+        
+        grpo_summary = rlvr_engine.run_grpo_round()
+        cohort = grpo_summary["results"]
+        best = grpo_summary["best_candidate"]
+        self.last_grpo_cohort = cohort
+        
+        # Check if the best candidate beats the reigning champion
+        if best["latency_us"] < self.champion["latency_us"]:
+            status = "ASCENDED"
+            old_name = self.champion["name"]
+            speedup = ((self.champion["latency_us"] - best["latency_us"]) / self.champion["latency_us"]) * 100.0
+            
+            challenger = {
+                "id": best["cand_id"],
+                "name": best["name"],
+                "strategy": f"GRPO Winner (Advantage: {best['grpo_advantage']:+.2f}, Speedup: {best['speedup_vs_baseline']:.2f}x)",
+                "status": "ASCENDED",
+                "reason": f"Beat Champion by {speedup:.1f}% ({best['latency_us']:.2f} µs vs {self.champion['latency_us']:.2f} µs)",
+                "latency_us": best["latency_us"],
+                "compile_time_ms": 1200.0,
+                "registers": best["registers"],
+                "generation": self.generation,
+                "unroll": best["unroll"],
+                "cache_streaming": best["cache_streaming"],
+                "ptx_fma_mode": best["ptx_fma_mode"],
+                "reward": best["reward"]
+            }
+            
+            self.champion = {
+                "id": challenger["id"],
+                "name": challenger["name"],
+                "author": "RLVR GRPO Cohort Victor",
+                "latency_us": best["latency_us"],
+                "registers": best["registers"],
+                "unroll": best["unroll"],
+                "cache_streaming": best["cache_streaming"],
+                "ptx_fma_mode": best["ptx_fma_mode"],
+                "status": "CROWNED",
+                "generation": self.generation,
+                "code_snippet": f"// RLVR GRPO Champ Gen {self.generation}\n#define UNROLL {best['unroll']}\n#define PTX_MODE {best['ptx_fma_mode']}",
+                "defeated_count": 0
+            }
+            
+            self.hall_of_fame.insert(0, {
+                "rank": len(self.hall_of_fame) + 1,
+                "name": self.champion["name"],
+                "author": challenger["strategy"],
+                "latency_us": best["latency_us"],
+                "speedup_vs_triton": f"{40.59 / best['latency_us']:.2f}x",
+                "generation": self.generation,
+                "achieved_at": time.strftime("%H:%M:%S")
+            })
+            self.event_log.insert(0, f"👑 [RLVR GRPO] ASCENSION! {best['name']} crowned! Latency: {best['latency_us']:.2f} µs (Adv: {best['grpo_advantage']:+.2f})")
+        else:
+            status = "DEFEATED"
+            lag = best["latency_us"] - self.champion["latency_us"]
+            challenger = {
+                "id": best["cand_id"],
+                "name": best["name"],
+                "strategy": f"GRPO Winner (Advantage: {best['grpo_advantage']:+.2f}, Speedup: {best['speedup_vs_baseline']:.2f}x)",
+                "status": "DEFEATED",
+                "reason": f"Cohort victor slower than Champion (+{lag:.2f} µs: {best['latency_us']:.2f} µs vs {self.champion['latency_us']:.2f} µs)",
+                "latency_us": best["latency_us"],
+                "compile_time_ms": 1200.0,
+                "registers": best["registers"],
+                "generation": self.generation,
+                "unroll": best["unroll"],
+                "cache_streaming": best["cache_streaming"],
+                "ptx_fma_mode": best["ptx_fma_mode"],
+                "reward": best["reward"]
+            }
+            self.champion["defeated_count"] += 1
+            self.event_log.insert(0, f"⚔️ [RLVR GRPO] G=4 Cohort completed. Best: {best['name']} ({best['latency_us']:.2f} µs, Adv: {best['grpo_advantage']:+.2f})")
+            
+        self.last_challenger = challenger
+        self.total_reward += best["reward"]
+        
+        return {
+            "champion": self.champion,
+            "challenger": challenger,
+            "telemetry": self.get_gpu_telemetry(),
+            "hall_of_fame": self.hall_of_fame[:5],
+            "round_num": self.round_num,
+            "generation": self.generation,
+            "total_reward": round(self.total_reward, 1),
+            "log": self.event_log[:15],
+            "last_grpo_cohort": self.last_grpo_cohort
         }

@@ -130,6 +130,37 @@ function updateUI(data) {
         `).join('');
     }
 
+    // GRPO Cohort Grid
+    const cohortPanel = document.getElementById('grpo-cohort-panel');
+    const cohortContainer = document.getElementById('cohort-cards-container');
+    if (data.last_grpo_cohort && data.last_grpo_cohort.length > 0) {
+        cohortPanel.style.display = 'block';
+        const bestAdv = Math.max(...data.last_grpo_cohort.map(c => c.grpo_advantage || 0));
+        cohortContainer.innerHTML = data.last_grpo_cohort.map(c => {
+            const isWin = (c.grpo_advantage === bestAdv);
+            const advClass = (c.grpo_advantage >= 0) ? 'green' : 'red';
+            return `
+                <div class="cohort-card ${isWin ? 'winner' : ''}">
+                    <div class="cohort-card-title ${isWin ? 'gold' : 'cyan'}">
+                        ${c.name} ${isWin ? '👑 (VICTOR)' : ''}
+                    </div>
+                    <div class="cohort-card-meta">
+                        Unroll: <strong>x${c.unroll}</strong> | CS: <strong>${c.cache_streaming ? 'ON' : 'OFF'}</strong> | PTX: <strong>${c.ptx_fma_mode ? 'ON' : 'OFF'}</strong>
+                    </div>
+                    <div class="cohort-card-meta">
+                        Verify: ${c.verifiable_compile_pass ? '✅ Syntax' : '❌ Syntax'} | ${c.verifiable_math_pass ? '✅ Math' : '❌ Math'}
+                    </div>
+                    <div style="font-size: 1.1rem; font-weight: 800; margin: 0.2rem 0;" class="${isWin ? 'gold' : 'text-main'}">
+                        ${c.latency_us < 990 ? c.latency_us.toFixed(2) + ' µs' : 'CRASH'}
+                    </div>
+                    <div class="cohort-advantage ${advClass}">
+                        Advantage: ${c.grpo_advantage > 0 ? '+' : ''}${c.grpo_advantage ? c.grpo_advantage.toFixed(2) : '0.00'}
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
     // Logs
     if (data.log && data.log.length > 0) {
         logStream.innerHTML = data.log.map(line => {
