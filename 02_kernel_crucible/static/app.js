@@ -185,10 +185,10 @@ function initReactBitsParticles() {
             if (p.y < 0) p.y = height;
             if (p.y > height) p.y = 0;
 
-            // Draw particle
+            // Draw particle (ReactBits minimalist constellation)
             ctx.beginPath();
             ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-            ctx.fillStyle = "rgba(0, 240, 255, 0.4)";
+            ctx.fillStyle = "rgba(255, 255, 255, 0.25)";
             ctx.fill();
 
             // Connect nearby particles
@@ -201,8 +201,8 @@ function initReactBitsParticles() {
                     ctx.beginPath();
                     ctx.moveTo(p.x, p.y);
                     ctx.lineTo(p2.x, p2.y);
-                    ctx.strokeStyle = `rgba(0, 240, 255, ${0.15 * (1 - dist / 110)})`;
-                    ctx.lineWidth = 0.6;
+                    ctx.strokeStyle = `rgba(255, 255, 255, ${0.08 * (1 - dist / 110)})`;
+                    ctx.lineWidth = 0.5;
                     ctx.stroke();
                 }
             }
@@ -215,8 +215,8 @@ function initReactBitsParticles() {
                 ctx.beginPath();
                 ctx.moveTo(p.x, p.y);
                 ctx.lineTo(mouseX, mouseY);
-                ctx.strokeStyle = `rgba(181, 55, 242, ${0.25 * (1 - mdist / 140)})`;
-                ctx.lineWidth = 0.8;
+                ctx.strokeStyle = `rgba(139, 92, 246, ${0.18 * (1 - mdist / 140)})`;
+                ctx.lineWidth = 0.6;
                 ctx.stroke();
             }
         }
