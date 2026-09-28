@@ -1,7 +1,6 @@
 let isAuto = false;
-
-// DOM Elements
 const btnStep = document.getElementById('btn-step');
+const btnGrpo = document.getElementById('btn-grpo');
 const btnAuto = document.getElementById('btn-auto');
 const autoIndicator = document.getElementById('auto-indicator');
 const autoStatusText = document.getElementById('auto-status-text');
@@ -192,6 +191,26 @@ btnStep.addEventListener('click', () => {
             console.error("Step error:", err);
             btnStep.disabled = false;
             btnStep.textContent = "⚔️ RUN ARENA MATCH";
+        });
+});
+
+btnGrpo.addEventListener('click', () => {
+    btnGrpo.disabled = true;
+    btnGrpo.textContent = "🧬 RUNNING RLVR / GRPO BATTLE (G=4)...";
+    statusOrb.textContent = "GRPO BATTLE...";
+    fetch('/api/grpo_step', { method: 'POST' })
+        .then(r => r.json())
+        .then(data => {
+            btnGrpo.disabled = false;
+            btnGrpo.textContent = "🧬 RLVR / GRPO BATTLE (G=4)";
+            statusOrb.textContent = "GRPO DONE";
+            // Refresh status
+            fetch('/api/status').then(r => r.json()).then(updateUI);
+        })
+        .catch(err => {
+            console.error("GRPO error:", err);
+            btnGrpo.disabled = false;
+            btnGrpo.textContent = "🧬 RLVR / GRPO BATTLE (G=4)";
         });
 });
 

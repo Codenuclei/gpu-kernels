@@ -175,6 +175,17 @@ body {
     box-shadow: 0 0 30px rgba(0, 240, 255, 0.7);
 }
 
+.btn-grpo {
+    background: linear-gradient(135deg, #b537f2, #ff3366);
+    color: #fff;
+    box-shadow: 0 0 20px rgba(181, 55, 242, 0.4);
+}
+
+.btn-grpo:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0 30px rgba(255, 51, 102, 0.7);
+}
+
 .btn-secondary {
     background: rgba(181, 55, 242, 0.2);
     border: 1px solid var(--neon-purple);

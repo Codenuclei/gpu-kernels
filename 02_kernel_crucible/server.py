@@ -9,8 +9,10 @@ from urllib.parse import urlparse
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(BASE_DIR)
 from engine import KernelCrucibleEngine
+from rlvr_grpo_engine import RLVREngine
 
 engine = KernelCrucibleEngine()
+rlvr_engine = RLVREngine(group_size=4)
 auto_running = False
 auto_thread = None
 
@@ -83,6 +85,9 @@ class CrucibleHandler(SimpleHTTPRequestHandler):
         
         if parsed.path == "/api/step":
             res = engine.step_arena()
+            self.wfile.write(json.dumps(res).encode("utf-8"))
+        elif parsed.path == "/api/grpo_step":
+            res = rlvr_engine.run_grpo_round()
             self.wfile.write(json.dumps(res).encode("utf-8"))
         elif parsed.path == "/api/start_auto":
             if not auto_running:
