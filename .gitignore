@@ -1,8 +1,19 @@
-01_softmax/softmax
-*.so
+# Build artifacts
 *.o
+*.so
 *.out
+*.bin
+*.exe
+sc
+build/
+bin/
+
+# Python
 __pycache__/
+*.pyc
+
+# Softmax binaries
+01_softmax/softmax
 01_softmax/softmax_advanced
 01_softmax/softmax_warp
 01_softmax/bench_ptx_cudnn
@@ -11,6 +22,32 @@ __pycache__/
 01_softmax/breakthrough_10x
 01_softmax/verify_split_kv
 01_softmax/test_*
-**/unsloth_compiled_cache/
+01_softmax/lib*.so
+
+# Crucible binaries
 02_kernel_crucible/*_bin
 02_kernel_crucible/*.so
+**/unsloth_compiled_cache/
+
+# Warmup binaries
+00_warmup/vector_add
+00_warmup/memory_coalescing
+00_warmup/matrix_transpose
+00_warmup/strided_copy
+
+# Reduce binaries
+02_reduce/reduce
+02_reduce/prefix_scan
+
+# GEMM binaries
+03_gemm/gemm_tiled
+03_gemm/gemm_reg_tiled
+03_gemm/gemm_tensor_core
+
+# Attention binaries
+04_attention/mha_naive
+04_attention/flash_attention
+04_attention/flash_decoding
+
+# Benchmark binaries
+bench/benchmark_suite

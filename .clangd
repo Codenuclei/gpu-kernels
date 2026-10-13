@@ -1,0 +1,5 @@
+CompileFlags:
+  Add: [-xcuda, --cuda-path=/home/codenuclei/.local/cuda-toolkit/targets/x86_64-linux, --cuda-gpu-arch=sm_86, --no-cuda-version-check, -nocudalib, -I/home/codenuclei/.local/cuda-toolkit/targets/x86_64-linux/include, -Icommon]
+  Remove: [-forward-unknown-to-host-compiler, --generate-code*, -arch=*, -rdc=*]
+Documentation:
+  CommentFormat: Doxygen
