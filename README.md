@@ -94,7 +94,7 @@ All metrics below were measured directly on bare metal on the local **NVIDIA GeF
 ## 🔬 3. Deep-Dive: Kernel Modules
 
 The codebase is structured into modular progressive challenges following the rule:  
-$$\text{Naive Baseline} \longrightarrow \text{SRAM Tiling \& Coalescing} \longrightarrow \text{Register Outer-Product / Tensor Cores}$$
+$$\text{Naive Baseline} \longrightarrow \text{SRAM Tiling and Coalescing} \longrightarrow \text{Register Outer-Product / Tensor Cores}$$
 
 ```
 gpu-kernels/
