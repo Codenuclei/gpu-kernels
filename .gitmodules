@@ -1,0 +1,3 @@
+[submodule "02_kernel_crucible"]
+	path = 02_kernel_crucible
+	url = https://github.com/Codenuclei/kernel-crucible.git
