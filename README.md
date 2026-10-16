@@ -8,7 +8,7 @@
 [![RTX 2050 Mobile](https://img.shields.io/badge/Silicon-RTX_2050_Mobile-76B900?style=for-the-badge)](https://www.nvidia.com)
 [![Pure CUDA C++](https://img.shields.io/badge/Implementation-Pure_CUDA_C%2B%2B-00599C?logo=c%2B%2B&style=for-the-badge)](https://en.cppreference.com)
 [![Zero cuBLAS/cuDNN](https://img.shields.io/badge/Compute-Zero_cuBLAS%2FcuDNN-8B5CF6?style=for-the-badge)](#core-engineering-rules)
-[![License: Proprietary](https://img.shields.io/badge/License-Proprietary_@Codenuclei-EF4444?style=for-the-badge)](#intellectual-property--security)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
 
 <br/>
 
@@ -262,6 +262,6 @@ ncu --metrics sm__pipe_tensor_cycles_active.avg.pct_of_peak_sustained_active ./0
 
 ---
 
-## 🔒 Intellectual Property & Security
+## License
 
-> **Confidential & Proprietary:** All kernels, algorithms, post-training flywheel architectures, and mathematical formulations contained in this repository are strictly private and proprietary to **@Codenuclei**.
+Released under the MIT License. See [LICENSE](LICENSE).
